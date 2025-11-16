@@ -172,7 +172,7 @@ flowchart LR
         EVENT["Event:"] --> FRAUD["Agent logs 'FRAUD'<br/>Masumi Decision"]
         FRAUD --> CALL["Call L1<br/>Contract"]
         CALL --> READ["Contract reads Masumi<br/>log,"]
-        READ --> ALERT["Status: ALERT!<br/>UI Polling &"]
+        READ --> ALERT["Status: ALERT!<br/>UI Polling"]
     end
     
     LOCK -.-> IOT
