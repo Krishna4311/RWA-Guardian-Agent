@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import {
   LineChart,
   Line,
@@ -39,6 +39,7 @@ type MetricType = 'voltage' | 'current' | 'energy_kw';
 interface LiveSessionChartProps {
   simulationMode?: boolean;
   apiEndpoint?: string;
+  isPaused?: boolean;
 }
 
 /**
@@ -52,112 +53,99 @@ interface LiveSessionChartProps {
  * - Can be replaced with real API data when backend is ready
  */
 export default function LiveSessionChart({
-  simulationMode = true,
+  simulationMode = false,
   apiEndpoint = 'http://localhost:5000/ingest',
+  isPaused = false,
 }: LiveSessionChartProps) {
-  const [data, setData] = useState<DataPoint[]>([
-    { time: '0s', voltage: 230, current: 10, energy_kwh: 0 },
-  ]);
+  const [data, setData] = useState<DataPoint[]>([]);
   const [selectedMetric, setSelectedMetric] = useState<MetricType>('voltage');
   const [totalDataPoints, setTotalDataPoints] = useState(0);
+  const datasetIndexRef = useRef(0); // Preserve dataset index across pauses
+  const hasStartedRef = useRef(false); // Track if we've started before
   
   useEffect(() => {
-    if (simulationMode) {
-      let intervalId: number | undefined;
-      let datasetIndex = 0;
-      let dataset: CSVRow[] = [];
-  
-      const startSimulation = async () => {
-        try {
-          // 1. Load the dataset (converted CSV) from public/
-          const response = await fetch('/large_synthetic_ev_data.json');
-          const allRows: CSVRow[] = await response.json();
-  
-          // (Optional) Use only one session, e.g., S1
-          const rows = allRows.filter((row) => row.session_id === 'S1');
-  
-          if (rows.length === 0) {
-            console.warn('No rows found for session S1, falling back to full dataset');
-            dataset = allRows;
-          } else {
-            dataset = rows;
-          }
-  
-          // Reset chart data
+    // Don't start anything if simulationMode is false (session not active or paused)
+    if (!simulationMode) {
+      // Only reset chart data when session is actually stopped (not paused)
+      if (!isPaused) {
+        // Session was stopped, reset everything
+        setData([]);
+        setTotalDataPoints(0);
+        datasetIndexRef.current = 0;
+        hasStartedRef.current = false;
+      }
+      // If paused, just return without resetting - data is preserved
+      return;
+    }
+
+    // Simulation mode: use dataset
+    let intervalId: number | undefined;
+    let dataset: CSVRow[] = [];
+
+    const startSimulation = async () => {
+      try {
+        // 1. Load the dataset (converted CSV) from public/
+        const response = await fetch('/large_synthetic_ev_data.json');
+        const allRows: CSVRow[] = await response.json();
+
+        // (Optional) Use only one session, e.g., S1
+        const rows = allRows.filter((row) => row.session_id === 'S1');
+
+        if (rows.length === 0) {
+          console.warn('No rows found for session S1, falling back to full dataset');
+          dataset = allRows;
+        } else {
+          dataset = rows;
+        }
+
+        // Only reset chart data when starting completely fresh (first time)
+        // If we've started before, we're resuming from a pause, so keep existing data
+        if (!hasStartedRef.current) {
           setData([]);
           setTotalDataPoints(0);
-          datasetIndex = 0;
-  
-          // 2. Every second, push the next row from the dataset into the chart
-          intervalId = window.setInterval(() => {
-            if (dataset.length === 0) return;
-            
-            const row = dataset[datasetIndex];
-  
-            const newDataPoint: DataPoint = {
-              time: `${row.time_index}s`,   // from CSV
-              voltage: row.voltage,        // from CSV
-              current: row.current,        // from CSV
-              energy_kwh: row.energy_kwh,  // from CSV
-            };
-  
-            setData((prevData) => {
-              const updated = [...prevData, newDataPoint];
-              // Keep only last 60 points for performance
-              return updated.slice(-60);
-            });
-            
-            // Increment total data points counter
-            setTotalDataPoints((prev) => prev + 1);
-  
-            // Move to the next row, loop back at the end
-            datasetIndex = (datasetIndex + 1) % dataset.length;
-          }, 1000);
-        } catch (error) {
-          console.error('Failed to start CSV-based simulation:', error);
+          datasetIndexRef.current = 0;
+          hasStartedRef.current = true;
         }
-      };
-  
-      startSimulation();
-  
-      // Cleanup on unmount or when simulationMode changes
-      return () => {
-        if (intervalId !== undefined) {
-          window.clearInterval(intervalId);
-        }
-      };
-    } else {
-      // Real API mode: poll the backend (keep your existing code here)
-      const interval = setInterval(async () => {
-        try {
-          const response = await fetch(apiEndpoint);
-          const result = await response.json();
-  
-          if (result.voltage !== undefined) {
-            setData((prevData) => {
-              const newTime = prevData.length;
-              const newDataPoint: DataPoint = {
-                time: `${newTime}s`,
-                voltage: result.voltage,
-                current: result.current || 10,
-                energy_kwh: result.energy_kwh || 0,
-              };
-  
-              const updated = [...prevData, newDataPoint];
-              return updated.slice(-60);
-            });
-            
-            // Increment total data points counter
-            setTotalDataPoints((prev) => prev + 1);
-          }
-        } catch (error) {
-          console.error('Failed to fetch voltage data:', error);
-        }
-      }, 1000);
-  
-      return () => clearInterval(interval);
-    }
-  }, [simulationMode, apiEndpoint]);
+
+        // 2. Every second, push the next row from the dataset into the chart
+        intervalId = window.setInterval(() => {
+          if (dataset.length === 0) return;
+          
+          const row = dataset[datasetIndexRef.current];
+
+          const newDataPoint: DataPoint = {
+            time: `${row.time_index}s`,   // from CSV
+            voltage: row.voltage,        // from CSV
+            current: row.current,        // from CSV
+            energy_kwh: row.energy_kwh,  // from CSV
+          };
+
+          setData((prevData) => {
+            const updated = [...prevData, newDataPoint];
+            // Keep only last 60 points for performance
+            return updated.slice(-60);
+          });
+          
+          // Increment total data points counter
+          setTotalDataPoints((prev) => prev + 1);
+
+          // Move to the next row, loop back at the end
+          datasetIndexRef.current = (datasetIndexRef.current + 1) % dataset.length;
+        }, 1000);
+      } catch (error) {
+        console.error('Failed to start CSV-based simulation:', error);
+      }
+    };
+
+    startSimulation();
+
+    // Cleanup on unmount or when simulationMode changes to false
+    return () => {
+      if (intervalId !== undefined) {
+        window.clearInterval(intervalId);
+      }
+    };
+  }, [simulationMode, isPaused]);
 
   // Get chart configuration based on selected metric
   const getChartConfig = () => {

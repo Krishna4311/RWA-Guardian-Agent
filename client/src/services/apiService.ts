@@ -9,6 +9,17 @@ export interface StatusResponse {
   timestamp: number;
   voltage?: number;
   message?: string;
+  session_id?: string;
+  detection_method?: 'ml_model' | 'rule_based';
+  ml_confidence?: number;
+  ml_confidence_pct?: number;
+  features?: {
+    max_voltage: number;
+    min_voltage: number;
+    mean_current: number;
+    total_energy: number;
+    physics_diff: number;
+  };
 }
 
 /**

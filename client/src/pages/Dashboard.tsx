@@ -41,33 +41,36 @@ interface FraudRecord {
 export default function Dashboard() {
   const [walletConnected, setWalletConnected] = useState(false);
   const [sessionActive, setSessionActive] = useState(false);
+  const [sessionPaused, setSessionPaused] = useState(false);
   const [fraudRecords, setFraudRecords] = useState<FraudRecord[]>([]);
   const processedRecordsRef = useRef<Set<string>>(new Set());
 
-  // Poll the backend for status updates every 2 seconds
+  // Poll the backend for status updates every 2 seconds (only when active and not paused)
   const { status, loading, error } = useAPIPoller({
     endpoint: 'http://localhost:5000/status',
     interval: 2000,
-    enabled: sessionActive,
+    enabled: sessionActive && !sessionPaused,
   });
 
-  // Track current record from dataset (for display purposes - S1)
-  const { currentRecord } = useDatasetTracker(sessionActive, 'S1');
+  // Track current record from dataset (for display purposes - S1) (only when active and not paused)
+  const { currentRecord } = useDatasetTracker(sessionActive && !sessionPaused, 'S1');
 
   // Get status and label from dataset, with fallbacks
-  const datasetStatus = currentRecord?.status || (sessionActive ? 'loading...' : 'idle');
-  const datasetLabel = currentRecord?.label || (sessionActive ? 'loading...' : 'idle');
+  const datasetStatus = currentRecord?.status || (sessionActive && !sessionPaused ? 'loading...' : sessionPaused ? 'paused' : 'idle');
+  const datasetLabel = currentRecord?.label || (sessionActive && !sessionPaused ? 'loading...' : sessionPaused ? 'paused' : 'idle');
   
-  // Determine current status: prioritize fraud detection from ALL sessions
-  // If any fraud records detected OR current record is fraud, show FRAUD
-  // Otherwise use API status or default to VALID
-  const currentStatus = (fraudRecords.length > 0 || datasetLabel === 'fraud') 
+  // Determine current status: prioritize fraud detection from ALL sources
+  // Priority: 1. ML Model/API status, 2. Dataset fraud records, 3. Dataset label, 4. Default VALID
+  const currentStatus = (status?.status === 'FRAUD' || fraudRecords.length > 0 || datasetLabel === 'fraud') 
     ? 'FRAUD' 
     : (status?.status || 'VALID');
 
-  // Track fraud records from ALL sessions in real-time
+  // Track fraud records from ALL sessions in real-time (only when active and not paused)
   useEffect(() => {
-    if (!sessionActive) return;
+    // Stop fraud detection if session is not active or is paused
+    if (!sessionActive || sessionPaused) {
+      return;
+    }
 
     let intervalId: number | undefined;
     let allDataset: any[] = [];
@@ -83,6 +86,14 @@ export default function Dashboard() {
 
         // Scan through ALL records sequentially, not just S1
         intervalId = window.setInterval(() => {
+          // Double-check pause state inside interval (in case it changed)
+          if (!sessionActive || sessionPaused) {
+            if (intervalId !== undefined) {
+              window.clearInterval(intervalId);
+            }
+            return;
+          }
+
           if (allDataset.length === 0) return;
 
           const record = allDataset[datasetIndex];
@@ -121,22 +132,33 @@ export default function Dashboard() {
         window.clearInterval(intervalId);
       }
     };
-  }, [sessionActive]);
+  }, [sessionActive, sessionPaused]);
 
-  // Reset fraud records when session stops
+  // Reset fraud records when session stops (but not when paused)
   useEffect(() => {
     if (!sessionActive) {
       setFraudRecords([]);
       processedRecordsRef.current.clear();
+      setSessionPaused(false); // Reset pause state when session stops
     }
   }, [sessionActive]);
 
   const handleStartSession = () => {
     setSessionActive(true);
+    setSessionPaused(false);
   };
 
   const handleStopSession = () => {
     setSessionActive(false);
+    setSessionPaused(false);
+  };
+
+  const handlePauseSession = () => {
+    setSessionPaused(true);
+  };
+
+  const handleResumeSession = () => {
+    setSessionPaused(false);
   };
 
   return (
@@ -231,6 +253,28 @@ export default function Dashboard() {
                 >
                   ▶ START SESSION
                 </button>
+                {sessionActive && !sessionPaused && (
+                  <button
+                    onClick={handlePauseSession}
+                    className="w-full px-4 py-3 border-2 border-[#ffaa00] bg-[#0a0e27] text-[#ffaa00] text-xs font-bold uppercase tracking-wider hover:bg-[#ffaa00] hover:text-[#0a0e27] transition-all duration-200 rounded-xl"
+                    style={{
+                      boxShadow: '0 0 10px rgba(255, 170, 0, 0.4)',
+                    }}
+                  >
+                    ⏸ PAUSE SESSION
+                  </button>
+                )}
+                {sessionActive && sessionPaused && (
+                  <button
+                    onClick={handleResumeSession}
+                    className="w-full px-4 py-3 border-2 border-[#00ff41] bg-[#0a0e27] text-[#00ff41] text-xs font-bold uppercase tracking-wider hover:bg-[#00ff41] hover:text-[#0a0e27] transition-all duration-200 rounded-xl"
+                    style={{
+                      boxShadow: '0 0 10px rgba(0, 255, 65, 0.4)',
+                    }}
+                  >
+                    ▶ RESUME SESSION
+                  </button>
+                )}
                 <button
                   onClick={handleStopSession}
                   disabled={!sessionActive}
@@ -251,8 +295,12 @@ export default function Dashboard() {
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-[#6b7280]">Session</span>
-                  <span className={`text-xs font-bold ${sessionActive ? 'text-[#00ff41]' : 'text-[#6b7280]'}`}>
-                    {sessionActive ? '● ACTIVE' : '○ IDLE'}
+                  <span className={`text-xs font-bold ${
+                    sessionPaused ? 'text-[#ffaa00]' : 
+                    sessionActive ? 'text-[#00ff41]' : 
+                    'text-[#6b7280]'
+                  }`}>
+                    {sessionPaused ? '⏸ PAUSED' : sessionActive ? '● ACTIVE' : '○ IDLE'}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
@@ -272,10 +320,12 @@ export default function Dashboard() {
                   <span className={`text-xs font-bold uppercase ${
                     datasetStatus === 'charging' ? 'text-[#00ff41]' : 
                     datasetStatus === 'loading...' ? 'text-[#6b7280]' : 
+                    datasetStatus === 'paused' ? 'text-[#ffaa00]' :
                     'text-[#ff006e]'
                   }`}>
                     {datasetStatus === 'charging' ? '● CHARGING' : 
                      datasetStatus === 'loading...' ? '○ LOADING' :
+                     datasetStatus === 'paused' ? '⏸ PAUSED' :
                      `● ${datasetStatus.toUpperCase()}`
                     }
                   </span>
@@ -320,11 +370,82 @@ export default function Dashboard() {
               <StatusCard status={currentStatus} />
             </div>
 
+            {/* ML Model Detection Info */}
+            {status?.detection_method === 'ml_model' && status.ml_confidence_pct !== undefined && (
+              <div className="border-2 border-[#00d9ff] bg-[#0f1535] p-6 rounded-2xl animate-in fade-in duration-500"
+                style={{
+                  boxShadow: '0 0 15px rgba(0, 217, 255, 0.4), inset 0 0 15px rgba(0, 217, 255, 0.05)',
+                }}
+              >
+                <div className="flex items-center gap-3 mb-4">
+                  <Shield size={20} className="text-[#00d9ff]" />
+                  <p className="text-xs uppercase tracking-widest text-[#6b7280]">ML Model Detection</p>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <p className="text-xs text-[#6b7280] mb-1">Confidence</p>
+                    <p className={`text-2xl font-bold ${
+                      status.status === 'FRAUD' ? 'text-[#ff006e]' : 'text-[#00ff41]'
+                    }`}>
+                      {status.ml_confidence_pct.toFixed(1)}%
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-[#6b7280] mb-1">Method</p>
+                    <p className="text-sm font-bold text-[#00d9ff] uppercase">
+                      {status.detection_method === 'ml_model' ? 'Machine Learning' : 'Rule-Based'}
+                    </p>
+                  </div>
+                </div>
+
+                {status.features && (
+                  <div className="border-t border-[#00d9ff]/20 pt-4">
+                    <p className="text-xs uppercase tracking-widest text-[#6b7280] mb-3">Model Features</p>
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-xs">
+                      <div>
+                        <p className="text-[#6b7280] mb-1">Max Voltage</p>
+                        <p className="font-bold text-[#00d9ff]">{status.features.max_voltage.toFixed(1)}V</p>
+                      </div>
+                      <div>
+                        <p className="text-[#6b7280] mb-1">Min Voltage</p>
+                        <p className="font-bold text-[#00d9ff]">{status.features.min_voltage.toFixed(1)}V</p>
+                      </div>
+                      <div>
+                        <p className="text-[#6b7280] mb-1">Mean Current</p>
+                        <p className="font-bold text-[#00d9ff]">{status.features.mean_current.toFixed(1)}A</p>
+                      </div>
+                      <div>
+                        <p className="text-[#6b7280] mb-1">Total Energy</p>
+                        <p className="font-bold text-[#00d9ff]">{status.features.total_energy.toFixed(3)}kWh</p>
+                      </div>
+                      <div>
+                        <p className="text-[#6b7280] mb-1">Physics Diff</p>
+                        <p className={`font-bold ${
+                          status.features.physics_diff > 0.01 ? 'text-[#ff006e]' : 'text-[#00ff41]'
+                        }`}>
+                          {status.features.physics_diff.toFixed(4)}kWh
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {status.message && (
+                  <div className="mt-4 pt-4 border-t border-[#00d9ff]/20">
+                    <p className="text-xs text-[#6b7280] mb-1">Analysis</p>
+                    <p className="text-sm text-[#9ca3af]">{status.message}</p>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Live Chart */}
             <div className="animate-in fade-in duration-500 delay-100">
               <LiveSessionChart
-                simulationMode={sessionActive}
+                simulationMode={sessionActive && !sessionPaused}
                 apiEndpoint="http://localhost:5000/ingest"
+                isPaused={sessionPaused}
               />
             </div>
 
