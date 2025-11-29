@@ -1,0 +1,89 @@
+
+services:
+  # ==========================================================
+  # 1. LAYER 1: CARDANO NODE (The Anchor)
+  # ==========================================================
+  cardano-node:
+    image: ghcr.io/intersectmbo/cardano-node:10.1.2
+    environment:
+      - NETWORK=preprod
+    volumes:
+      # Persistent Blockchain Data (Heavy)
+      - ./node-data:/opt/cardano/data
+      # Shared Socket for IPC (Crucial for Hydra)
+      - ./node-ipc:/opt/cardano/ipc
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "200k"
+        max-file: "10"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f 127.0.0.1:12798/metrics || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # ==========================================================
+  # 2. LAYER 2: HYDRA NODE (The Speed Lane)
+  # ==========================================================
+  hydra-node:
+    image: ghcr.io/cardano-scaling/hydra-node:0.19.0
+    command: >
+      --node-id 1
+      --api-host 0.0.0.0 --api-port 4001
+      --host 0.0.0.0 --port 5001
+      --monitoring-port 6001
+      --cardano-signing-key /keys/cardano.sk
+      --hydra-signing-key /keys/hydra.sk
+      --ledger-protocol-parameters /params/protocol-parameters.json
+      --testnet-magic 1
+      --node-socket /ipc/node.socket
+    volumes:
+      - ./node-ipc:/ipc
+      - ./keys:/keys
+      - ./params:/params
+    ports:
+      - "4001:4001" # WebSocket for Agent (The "Phone Line")
+      - "5001:5001" # P2P Port (Talking to other Hydra nodes)
+      - "6001:6001" # Metrics (Prometheus)
+    depends_on:
+      cardano-node:
+        condition: service_started
+
+  # ==========================================================
+  # 3. IDENTITY: MASUMI PAYMENT SERVICE
+  # ==========================================================
+  masumi-payment:
+    build: 
+      context: ./masumi-payment-service
+    restart: on-failure
+    environment:
+      - NETWORK=preprod
+      - PORT=3000
+      - DATABASE_URL=postgresql://masumi:password@postgres:5432/masumi_db
+      # SECURITY: You must set these in your .env file
+      - BLOCKFROST_API_KEY_PREPROD=${BLOCKFROST_KEY}
+      - ADMIN_KEY=${MASUMI_ADMIN_KEY:-admin-secret} 
+      - ENCRYPTION_KEY=${MASUMI_ENC_KEY:-change-this-to-32-chars-min-length!!}
+    ports:
+      - "3000:3000" # API for Agent Registration
+    depends_on:
+      - postgres
+
+  # ==========================================================
+  # 4. DATABASE: POSTGRES (For Masumi)
+  # ==========================================================
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_USER=masumi
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=masumi_db
+    volumes:
+      - ./masumi-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U masumi -d masumi_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
