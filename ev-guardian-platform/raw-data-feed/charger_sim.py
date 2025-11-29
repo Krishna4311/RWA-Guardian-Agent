@@ -1,96 +1,112 @@
 import random
 import pandas as pd
+import numpy as np
+import time
 
-class EVSessionSimulator:
+class RobustEVSimulator:
     def __init__(self):
         self.voltage_nominal = 230
-        self.current_nominal = 10
+        self.current_max = 32 # 32A Standard Charger
         self.dt = 1 # 1 second time step
 
-    def generate_session(self, session_id, is_fraud=False, duration_seconds=30):
+    def generate_session(self, session_id, scenario="normal", duration_seconds=60):
+        """
+        Generates a charging session based on a specific 'scenario'.
+        Scenarios: 'normal', 'salami_slicing', 'meter_bypass', 'ghost_injection'
+        """
         data = []
-        energy_kwh = 0.0
+        energy_accumulator = 0.0
         
-        # Assign a stable random baseline for this session
-        base_voltage = self.voltage_nominal + random.uniform(-3, 3)
-        base_current = self.current_nominal + random.uniform(-1, 1)
-
-        # Determine anomaly type if fraud
-        anomaly_type = None
-        if is_fraud:
-            # Randomly pick one of the fraud rules from the PDF
-            anomaly_type = random.choice(["voltage_spike", "voltage_dip", "current_spike", "energy_drop"])
+        # Physics State
+        battery_soc = random.uniform(20, 50) # Start with 20-50% battery
+        battery_capacity = 60.0 # 60kWh standard EV battery
+        
+        print(f"   Generating Scenario: {scenario.upper()}")
 
         for t in range(duration_seconds):
-            # Normal variations
-            voltage = round(base_voltage + random.uniform(-1, 1), 1)
-            current = round(base_current + random.uniform(-0.5, 0.5), 1)
+            # 1. BASE PHYSICS (The Truth)
+            # ---------------------------------------------------------
+            # CC-CV Curve: If SOC > 80%, current drops exponentially
+            target_current = self.current_max
+            if battery_soc > 80:
+                decay = (100 - battery_soc) / 20.0
+                target_current = self.current_max * max(0.1, decay)
             
-            # Inject Anomaly (roughly in the middle of the session, e.g., seconds 10-15)
-            is_anomaly_time = (t >= 10 and t < 15)
+            # Add natural electrical noise (Real world isn't perfect)
+            real_voltage = np.random.normal(self.voltage_nominal, 0.5)
+            real_current = np.random.normal(target_current, 0.2)
             
-            if is_fraud and is_anomaly_time:
-                if anomaly_type == "voltage_spike":
-                    voltage = round(random.uniform(265, 290), 1) # Rule: > 260 [cite: 168]
-                elif anomaly_type == "voltage_dip":
-                    voltage = round(random.uniform(150, 190), 1) # Rule: < 200 [cite: 168]
-                elif anomaly_type == "current_spike":
-                    current = round(random.uniform(55, 80), 1)   # Rule: > 50 [cite: 169]
-                elif anomaly_type == "energy_drop":
-                    # Directly manipulate energy to drop
-                    energy_kwh = max(0, energy_kwh - 0.02) # Rule: Energy decreases [cite: 170]
+            # Calculate REAL physics energy for this second
+            # Power (kW) = (V * A) / 1000
+            real_power_kw = (real_voltage * real_current) / 1000.0
+            real_energy_step = real_power_kw * (self.dt / 3600.0)
+
+            # 2. ATTACK LAYER (The Lie)
+            # ---------------------------------------------------------
+            reported_voltage = real_voltage
+            reported_current = real_current
+            reported_energy_step = real_energy_step
+
+            if scenario == "salami_slicing":
+                # FRAUD: Inflate energy by 3% (Hard to detect!)
+                # The user pays for 1.03x what they actually got.
+                reported_energy_step = real_energy_step * 1.03
             
-            # Calculate Energy (Skip accumulation if we are simulating an energy drop anomaly)
-            if not (is_fraud and is_anomaly_time and anomaly_type == "energy_drop"):
-                power_kw = (voltage * current) / 1000.0
-                energy_step = power_kw * (self.dt / 3600.0)
-                energy_kwh += energy_step
+            elif scenario == "meter_bypass":
+                # FRAUD: The car is charging, but meter counts 90% slower
+                # Energy Theft / Free Riding
+                reported_energy_step = real_energy_step * 0.1
+                
+            elif scenario == "ghost_injection":
+                # FRAUD: Fake data. Perfect numbers, but "Physics Mismatch" if checked closely.
+                # We inject a math error: Energy claims to be consistent with 50A, but current shows 32A
+                fake_current = 50.0 
+                fake_power = (reported_voltage * fake_current) / 1000.0
+                reported_energy_step = fake_power * (self.dt / 3600.0)
             
-            status = "charging" if t < duration_seconds - 1 else "finished"
+            # 3. STATE UPDATE
+            # ---------------------------------------------------------
+            energy_accumulator += reported_energy_step
             
+            # Update virtual battery SOC (using REAL energy, not reported)
+            battery_soc += (real_energy_step / battery_capacity) * 100
+
             record = {
                 "time_index": t,
                 "session_id": session_id,
-                "voltage": voltage,
-                "current": current,
-                "energy_kwh": round(energy_kwh, 5),
-                "status": status,
-                # 'label' column is for your reference to check accuracy later
-                "label": "fraud" if is_fraud else "normal"
+                "scenario": scenario,
+                "voltage": round(reported_voltage, 2),
+                "current": round(reported_current, 2),
+                "energy_kwh": round(energy_accumulator, 5)
             }
             data.append(record)
-            
+
         return data
 
-# --- MAIN GENERATION ---
+# --- MAIN GENERATION ---# Inside charger_sim.py (Update the bottom part)
+
 if __name__ == "__main__":
-    # Configuration for > 1000 rows
-    NUM_SESSIONS = 50
-    DURATION_PER_SESSION = 30 # 50 sessions * 30 seconds = 1500 rows
-    FRAUD_RATIO = 0.2         # 20% of sessions will be fraudulent
-
-    sim = EVSessionSimulator()
+    sim = RobustEVSimulator()
     all_data = []
+    
+    print("🚀 Generating Training Dataset (2000 Sessions)...")
+    
+    # Generate 1500 Normal Sessions (Real life is mostly normal)
+    for i in range(1500):
+        all_data.extend(sim.generate_session(f"S_NORM_{i}", scenario="normal"))
 
-    print(f"Generating {NUM_SESSIONS} sessions ({DURATION_PER_SESSION}s each)...")
+    # Generate 150 "Salami Slicing" (Hard to catch)
+    for i in range(150):
+        all_data.extend(sim.generate_session(f"S_SALAMI_{i}", scenario="salami_slicing"))
 
-    for i in range(1, NUM_SESSIONS + 1):
-        sid = f"S{i}"
-        # Determine if this session is fraud based on random chance
-        is_fraud = True if random.random() < FRAUD_RATIO else False
+    # Generate 150 "Meter Bypass" (Energy Theft)
+    for i in range(150):
+        all_data.extend(sim.generate_session(f"S_BYPASS_{i}", scenario="meter_bypass"))
         
-        session_data = sim.generate_session(sid, is_fraud, DURATION_PER_SESSION)
-        all_data.extend(session_data)
+    # Generate 200 "Ghost" Attacks (Obvious fraud)
+    for i in range(200):
+        all_data.extend(sim.generate_session(f"S_GHOST_{i}", scenario="ghost_injection"))
 
     df = pd.DataFrame(all_data)
-    
-    # Save to CSV
-    csv_filename = "large_synthetic_ev_data.csv"
-    df.to_csv(csv_filename, index=False)
-    
-    print("-" * 50)
-    print(f"Done! Generated {len(df)} rows.")
-    print(f"Saved to: {csv_filename}")
-    print("-" * 50)
-    print("Sample Data:")
-    print(df.head())
+    df.to_csv("training_data.csv", index=False)
+    print(f"✅ Saved {len(df)} rows to 'training_data.csv'")
