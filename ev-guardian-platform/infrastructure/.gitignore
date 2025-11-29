@@ -1,0 +1,8 @@
+keys/
+.env
+node-data/
+node-ipc/
+masumi-payment-service/
+node_modules/
+masumi-data/
+*.txt
