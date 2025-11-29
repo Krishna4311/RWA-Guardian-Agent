@@ -1,0 +1,93 @@
+{
+  "preamble": {
+    "title": "rakesh/ataluguard",
+    "description": "Aiken contracts for project 'rakesh/ataluguard'",
+    "version": "0.0.0",
+    "plutusVersion": "v3",
+    "compiler": {
+      "name": "Aiken",
+      "version": "v1.1.19+unknown"
+    },
+    "license": "Apache-2.0"
+  },
+  "validators": [
+    {
+      "title": "atala_guard.atala_guard.spend",
+      "datum": {
+        "title": "datum_opt",
+        "schema": {
+          "$ref": "#/definitions/atala_guard~1AtalaGuardDatum"
+        }
+      },
+      "redeemer": {
+        "title": "redeemer",
+        "schema": {
+          "$ref": "#/definitions/atala_guard~1StatusUpdate"
+        }
+      },
+      "compiledCode": "59010f01010029800aba2aba1aab9faab9eaab9dab9a48888896600264646644b30013370e900118031baa00189919912cc004cdc3a400060126ea8016264646644b300130110038acc004cdc3a4000601a6ea801626644b30013233001001375860266028602860286028602860286028602860226ea8c04c038896600200314a115980099b8f375c60280026eb8c00cc048dd50024528c4cc008008c05400501020268cc004cdc79bae300130103754016910100a50a51403914a08070c040c038dd5002918089809000c5900c45900f1bae300e001375c601c004601c00260146ea80162c8040c028004c028c02c004c01cdd5000c59005180380098039804000980380098019baa0078a4d1365640041",
+      "hash": "82adeab7d04be8153c0d34871fe3504337a6f31184e2ca5f48a2a21c"
+    },
+    {
+      "title": "atala_guard.atala_guard.else",
+      "redeemer": {
+        "schema": {}
+      },
+      "compiledCode": "59010f01010029800aba2aba1aab9faab9eaab9dab9a48888896600264646644b30013370e900118031baa00189919912cc004cdc3a400060126ea8016264646644b300130110038acc004cdc3a4000601a6ea801626644b30013233001001375860266028602860286028602860286028602860226ea8c04c038896600200314a115980099b8f375c60280026eb8c00cc048dd50024528c4cc008008c05400501020268cc004cdc79bae300130103754016910100a50a51403914a08070c040c038dd5002918089809000c5900c45900f1bae300e001375c601c004601c00260146ea80162c8040c028004c028c02c004c01cdd5000c59005180380098039804000980380098019baa0078a4d1365640041",
+      "hash": "82adeab7d04be8153c0d34871fe3504337a6f31184e2ca5f48a2a21c"
+    }
+  ],
+  "definitions": {
+    "ByteArray": {
+      "dataType": "bytes"
+    },
+    "atala_guard/AtalaGuardDatum": {
+      "title": "AtalaGuardDatum",
+      "anyOf": [
+        {
+          "title": "AtalaGuardDatum",
+          "dataType": "constructor",
+          "index": 0,
+          "fields": [
+            {
+              "title": "admin",
+              "$ref": "#/definitions/atala_guard~1VerificationKeyHash"
+            },
+            {
+              "title": "guardian_did",
+              "$ref": "#/definitions/atala_guard~1VerificationKeyHash"
+            },
+            {
+              "title": "status",
+              "$ref": "#/definitions/ByteArray"
+            }
+          ]
+        }
+      ]
+    },
+    "atala_guard/StatusUpdate": {
+      "title": "StatusUpdate",
+      "anyOf": [
+        {
+          "title": "StatusUpdate",
+          "dataType": "constructor",
+          "index": 0,
+          "fields": [
+            {
+              "title": "new_status",
+              "$ref": "#/definitions/ByteArray"
+            },
+            {
+              "title": "decision_log_ref",
+              "$ref": "#/definitions/ByteArray"
+            }
+          ]
+        }
+      ]
+    },
+    "atala_guard/VerificationKeyHash": {
+      "title": "VerificationKeyHash",
+      "dataType": "bytes"
+    }
+  }
+}
