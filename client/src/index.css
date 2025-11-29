@@ -1,0 +1,221 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&display=swap');
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --color-background: #0a0e27;
+  --color-foreground: #00d9ff;
+  --color-card: #0f1535;
+  --color-card-foreground: #00d9ff;
+  --color-popover: #0f1535;
+  --color-popover-foreground: #00d9ff;
+  --color-primary: #00d9ff;
+  --color-primary-foreground: #0a0e27;
+  --color-secondary: #ff006e;
+  --color-secondary-foreground: #ffffff;
+  --color-muted: #1a1f3a;
+  --color-muted-foreground: #6b7280;
+  --color-accent: #00d9ff;
+  --color-accent-foreground: #0a0e27;
+  --color-destructive: #ff006e;
+  --color-destructive-foreground: #ffffff;
+  --color-border: #00d9ff;
+  --color-input: #0f1535;
+  --color-ring: #00d9ff;
+  --color-chart-1: #00d9ff;
+  --color-chart-2: #00ff41;
+  --color-chart-3: #ff006e;
+  --color-chart-4: #00d9ff;
+  --color-chart-5: #00ff41;
+  --color-sidebar: #0a0e27;
+  --color-sidebar-foreground: #00d9ff;
+  --color-sidebar-primary: #00d9ff;
+  --color-sidebar-primary-foreground: #0a0e27;
+  --color-sidebar-accent: #00d9ff;
+  --color-sidebar-accent-foreground: #0a0e27;
+  --color-sidebar-border: #00d9ff;
+  --color-sidebar-ring: #00d9ff;
+}
+
+:root {
+  --primary: #00d9ff;
+  --primary-foreground: #0a0e27;
+  --sidebar-primary: #00d9ff;
+  --sidebar-primary-foreground: #0a0e27;
+  --chart-1: #00d9ff;
+  --chart-2: #00ff41;
+  --chart-3: #ff006e;
+  --chart-4: #00d9ff;
+  --chart-5: #00ff41;
+  --radius: 0.75rem;
+  --background: #0a0e27;
+  --foreground: #00d9ff;
+  --card: #0f1535;
+  --card-foreground: #00d9ff;
+  --popover: #0f1535;
+  --popover-foreground: #00d9ff;
+  --secondary: #ff006e;
+  --secondary-foreground: #ffffff;
+  --muted: #1a1f3a;
+  --muted-foreground: #6b7280;
+  --accent: #00d9ff;
+  --accent-foreground: #0a0e27;
+  --destructive: #ff006e;
+  --destructive-foreground: #ffffff;
+  --border: #00d9ff;
+  --input: #0f1535;
+  --ring: #00d9ff;
+  --sidebar: #0a0e27;
+  --sidebar-foreground: #00d9ff;
+  --sidebar-accent: #00d9ff;
+  --sidebar-accent-foreground: #0a0e27;
+  --sidebar-border: #00d9ff;
+  --sidebar-ring: #00d9ff;
+}
+
+.dark {
+  --primary: #00d9ff;
+  --primary-foreground: #0a0e27;
+  --sidebar-primary: #00d9ff;
+  --sidebar-primary-foreground: #0a0e27;
+  --background: #0a0e27;
+  --foreground: #00d9ff;
+  --card: #0f1535;
+  --card-foreground: #00d9ff;
+  --popover: #0f1535;
+  --popover-foreground: #00d9ff;
+  --secondary: #ff006e;
+  --secondary-foreground: #ffffff;
+  --muted: #1a1f3a;
+  --muted-foreground: #6b7280;
+  --accent: #00d9ff;
+  --accent-foreground: #0a0e27;
+  --destructive: #ff006e;
+  --destructive-foreground: #ffffff;
+  --border: #00d9ff;
+  --input: #0f1535;
+  --ring: #00d9ff;
+  --chart-1: #00d9ff;
+  --chart-2: #00ff41;
+  --chart-3: #ff006e;
+  --chart-4: #00d9ff;
+  --chart-5: #00ff41;
+  --sidebar: #0a0e27;
+  --sidebar-foreground: #00d9ff;
+  --sidebar-accent: #00d9ff;
+  --sidebar-accent-foreground: #0a0e27;
+  --sidebar-border: #00d9ff;
+  --sidebar-ring: #00d9ff;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  [type="button"]:not(:disabled),
+  [type="submit"]:not(:disabled),
+  [type="reset"]:not(:disabled),
+  a[href],
+  select:not(:disabled),
+  input[type="checkbox"]:not(:disabled),
+  input[type="radio"]:not(:disabled) {
+    @apply cursor-pointer;
+  }
+}
+
+@layer components {
+  .container {
+    width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  .flex {
+    min-height: 0;
+    min-width: 0;
+  }
+
+  @media (min-width: 640px) {
+    .container {
+      padding-left: 1.5rem;
+      padding-right: 1.5rem;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .container {
+      padding-left: 2rem;
+      padding-right: 2rem;
+      max-width: 1280px;
+    }
+  }
+
+  /* Cyberpunk Command Center - Neon Glow Effects */
+  .glow-cyan {
+    box-shadow: 0 0 10px rgba(0, 217, 255, 0.5), inset 0 0 10px rgba(0, 217, 255, 0.1);
+  }
+
+  .glow-magenta {
+    box-shadow: 0 0 10px rgba(255, 0, 110, 0.5), inset 0 0 10px rgba(255, 0, 110, 0.1);
+  }
+
+  .glow-green {
+    box-shadow: 0 0 10px rgba(0, 255, 65, 0.5), inset 0 0 10px rgba(0, 255, 65, 0.1);
+  }
+
+  .border-glow-cyan {
+    border: 2px solid #00d9ff;
+    box-shadow: 0 0 15px rgba(0, 217, 255, 0.6), inset 0 0 15px rgba(0, 217, 255, 0.1);
+  }
+
+  .border-glow-magenta {
+    border: 2px solid #ff006e;
+    box-shadow: 0 0 15px rgba(255, 0, 110, 0.6), inset 0 0 15px rgba(255, 0, 110, 0.1);
+  }
+
+  .border-glow-green {
+    border: 2px solid #00ff41;
+    box-shadow: 0 0 15px rgba(0, 255, 65, 0.6), inset 0 0 15px rgba(0, 255, 65, 0.1);
+  }
+
+  @keyframes scan-lines {
+    0% { transform: translateY(-100%); }
+    100% { transform: translateY(100%); }
+  }
+
+  .scan-animation {
+    animation: scan-lines 1.5s linear infinite;
+  }
+
+  @keyframes pulse-glow {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+  }
+
+  .pulse-glow {
+    animation: pulse-glow 1s ease-in-out infinite;
+  }
+
+  @keyframes danger-flash {
+    0%, 100% { box-shadow: 0 0 10px rgba(255, 0, 110, 0.5), inset 0 0 10px rgba(255, 0, 110, 0.1); }
+    50% { box-shadow: 0 0 30px rgba(255, 0, 110, 1), inset 0 0 20px rgba(255, 0, 110, 0.3); }
+  }
+
+  .danger-flash {
+    animation: danger-flash 0.8s ease-in-out infinite;
+  }
+}

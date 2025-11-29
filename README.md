@@ -209,4 +209,3 @@ This hackathon project is the foundation for a real, monetizable business.
 * Masumi (Payments): Any RWA project on Cardano (a tokenized farm, a supply chain) can discover our agent on Sokosumi and hire it. They will pay it for its 24/7 security service using Masumi's "Agent Payments" protocol.
 
 Our project demonstrates the power of the new agent economy. We are building one of the first, most critical agents—a "Guardian"—that will enable the next generation of secure, autonomous, multi-agent applications on Cardano.
-

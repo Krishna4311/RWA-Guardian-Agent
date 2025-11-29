@@ -1,96 +1,127 @@
 import random
 import pandas as pd
+import numpy as np
+import time
 
-class EVSessionSimulator:
+class RobustEVSimulator:
     def __init__(self):
         self.voltage_nominal = 230
-        self.current_nominal = 10
-        self.dt = 1 # 1 second time step
+        self.current_max = 32
+        self.dt = 1 
 
-    def generate_session(self, session_id, is_fraud=False, duration_seconds=30):
+    def generate_session(self, session_id, scenario="normal", duration_seconds=60):
         data = []
-        energy_kwh = 0.0
+        energy_accumulator = 0.0
         
-        # Assign a stable random baseline for this session
-        base_voltage = self.voltage_nominal + random.uniform(-3, 3)
-        base_current = self.current_nominal + random.uniform(-1, 1)
+        # Physics State
+        battery_soc = random.uniform(20, 50) 
+        battery_capacity = 60.0 
+        
+        session_label = "normal" if scenario == "normal" else "fraud"
 
-        # Determine anomaly type if fraud
-        anomaly_type = None
-        if is_fraud:
-            # Randomly pick one of the fraud rules from the PDF
-            anomaly_type = random.choice(["voltage_spike", "voltage_dip", "current_spike", "energy_drop"])
+        # --- REALISM: Sensor Calibration Error ---
+        # Every charger is slightly different. Some read high, some low.
+        # A normal sensor might have a permanent bias of +1.5% or -1.5%
+        sensor_bias = random.uniform(0.98, 1.02) 
 
         for t in range(duration_seconds):
-            # Normal variations
-            voltage = round(base_voltage + random.uniform(-1, 1), 1)
-            current = round(base_current + random.uniform(-0.5, 0.5), 1)
+            # 1. TRUE PHYSICS (What actually happens)
+            if battery_soc > 80:
+                decay = (100 - battery_soc) / 20.0
+                target_current = self.current_max * max(0.1, decay)
+            else:
+                target_current = self.current_max
+
+            # True values (with natural electrical fluctuation)
+            real_voltage = np.random.normal(self.voltage_nominal, 0.5)
+            real_current = np.random.normal(target_current, 0.2)
             
-            # Inject Anomaly (roughly in the middle of the session, e.g., seconds 10-15)
-            is_anomaly_time = (t >= 10 and t < 15)
+            real_power_kw = (real_voltage * real_current) / 1000.0
+            real_energy_step = real_power_kw * (self.dt / 3600.0)
+
+            # 2. SENSOR LAYER (The "Dirty" Reality)
+            # Sensors aren't perfect. They add noise and bias.
+            # Normal Readings = True Physics * Sensor Bias + Random Noise
+            measured_voltage = real_voltage + np.random.normal(0, 0.1)
+            measured_current = real_current + np.random.normal(0, 0.1)
             
-            if is_fraud and is_anomaly_time:
-                if anomaly_type == "voltage_spike":
-                    voltage = round(random.uniform(265, 290), 1) # Rule: > 260 [cite: 168]
-                elif anomaly_type == "voltage_dip":
-                    voltage = round(random.uniform(150, 190), 1) # Rule: < 200 [cite: 168]
-                elif anomaly_type == "current_spike":
-                    current = round(random.uniform(55, 80), 1)   # Rule: > 50 [cite: 169]
-                elif anomaly_type == "energy_drop":
-                    # Directly manipulate energy to drop
-                    energy_kwh = max(0, energy_kwh - 0.02) # Rule: Energy decreases [cite: 170]
+            # 3. FRAUD LAYER (The Attack)
+            reported_voltage = measured_voltage
+            reported_current = measured_current
             
-            # Calculate Energy (Skip accumulation if we are simulating an energy drop anomaly)
-            if not (is_fraud and is_anomaly_time and anomaly_type == "energy_drop"):
-                power_kw = (voltage * current) / 1000.0
-                energy_step = power_kw * (self.dt / 3600.0)
-                energy_kwh += energy_step
+            # Base reported energy (Normal case includes Sensor Bias!)
+            reported_energy_step = real_energy_step * sensor_bias
+
+            row_type = "normal"
+            note = "Normal Charging"
+
+            if scenario == "salami_slicing":
+                # FRAUD: Attackers add EXTRA 3% on top of whatever the sensor says
+                # Total Deviation might be 1.02 (sensor) * 1.03 (fraud) = ~1.05
+                reported_energy_step = reported_energy_step * 1.03
+                row_type = "fraud"
+                note = "Energy Inflation (3%)"
+            
+            elif scenario == "meter_bypass":
+                reported_energy_step = reported_energy_step * 0.1
+                row_type = "fraud"
+                note = "Meter Slowdown"
+                
+            elif scenario == "ghost_injection":
+                fake_current = 50.0 
+                fake_power = (reported_voltage * fake_current) / 1000.0
+                # Ghosts usually have "perfect" math, which is suspicious in itself!
+                # We simulate a "perfect" injection that ignores sensor noise
+                reported_energy_step = fake_power * (self.dt / 3600.0)
+                row_type = "fraud"
+                note = "Ghost Injection"
+            
+            # 4. ACCUMULATION
+            energy_accumulator += reported_energy_step
+            battery_soc += (real_energy_step / battery_capacity) * 100
             
             status = "charging" if t < duration_seconds - 1 else "finished"
-            
+
             record = {
                 "time_index": t,
                 "session_id": session_id,
-                "voltage": voltage,
-                "current": current,
-                "energy_kwh": round(energy_kwh, 5),
+                "voltage": round(reported_voltage, 2),
+                "current": round(reported_current, 2),
+                "energy_kwh": round(energy_accumulator, 5),
                 "status": status,
-                # 'label' column is for your reference to check accuracy later
-                "label": "fraud" if is_fraud else "normal"
+                "label": session_label, 
+                "row_type": row_type,
+                "note": note
             }
             data.append(record)
-            
+
         return data
 
-# --- MAIN GENERATION ---
 if __name__ == "__main__":
-    # Configuration for > 1000 rows
-    NUM_SESSIONS = 50
-    DURATION_PER_SESSION = 30 # 50 sessions * 30 seconds = 1500 rows
-    FRAUD_RATIO = 0.2         # 20% of sessions will be fraudulent
-
-    sim = EVSessionSimulator()
+    sim = RobustEVSimulator()
     all_data = []
+    
+    print("🚀 Generating NOISY Training Dataset (2000 Sessions)...")
+    
+    # 1500 Normal Sessions (Now with ±2% Sensor Error)
+    for i in range(1500):
+        all_data.extend(sim.generate_session(f"S_NORM_{i}", scenario="normal"))
 
-    print(f"Generating {NUM_SESSIONS} sessions ({DURATION_PER_SESSION}s each)...")
+    # 150 Salami Slicing (Now overlaps with bad sensors!)
+    for i in range(150):
+        all_data.extend(sim.generate_session(f"S_SALAMI_{i}", scenario="salami_slicing"))
 
-    for i in range(1, NUM_SESSIONS + 1):
-        sid = f"S{i}"
-        # Determine if this session is fraud based on random chance
-        is_fraud = True if random.random() < FRAUD_RATIO else False
+    # 150 Meter Bypass
+    for i in range(150):
+        all_data.extend(sim.generate_session(f"S_BYPASS_{i}", scenario="meter_bypass"))
         
-        session_data = sim.generate_session(sid, is_fraud, DURATION_PER_SESSION)
-        all_data.extend(session_data)
+    # 200 Ghost Attacks
+    for i in range(200):
+        all_data.extend(sim.generate_session(f"S_GHOST_{i}", scenario="ghost_injection"))
 
     df = pd.DataFrame(all_data)
+    cols = ["time_index", "session_id", "voltage", "current", "energy_kwh", "status", "label", "row_type", "note"]
+    df = df[cols]
     
-    # Save to CSV
-    csv_filename = "large_synthetic_ev_data.csv"
-    df.to_csv(csv_filename, index=False)
-    
-    print("-" * 50)
-    print(f"Done! Generated {len(df)} rows.")
-    print(f"Saved to: {csv_filename}")
-    print("-" * 50)
-    print("Sample Data:")
-    print(df.head())
+    df.to_csv("training_data.csv", index=False)
+    print(f"✅ Saved {len(df)} rows to 'training_data.csv'")
