@@ -1,0 +1,342 @@
+This file is a merged representation of the entire codebase, combined into a single document by Repomix.
+
+================================================================
+File Summary
+================================================================
+
+Purpose:
+--------
+This file contains a packed representation of the entire repository's contents.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+
+File Format:
+------------
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  a. A separator line (================)
+  b. The file path (File: path/to/file)
+  c. Another separator line
+  d. The full contents of the file
+  e. A blank line
+
+Usage Guidelines:
+-----------------
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+
+Notes:
+------
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+
+
+================================================================
+Directory Structure
+================================================================
+ev_simulator.py
+guardian-agent/model/fraud_detect.py
+raw-data-feed/charger_sim.py
+
+================================================================
+Files
+================================================================
+
+================
+File: ev_simulator.py
+================
+import random
+import pandas as pd
+
+class EVSessionSimulator:
+    def __init__(self):
+        self.voltage_nominal = 230
+        self.current_nominal = 10
+        self.dt = 1 # 1 second time step
+
+    def generate_session(self, session_id, is_fraud=False, duration_seconds=30):
+        data = []
+        energy_kwh = 0.0
+        
+        # Assign a stable random baseline for this session
+        base_voltage = self.voltage_nominal + random.uniform(-3, 3)
+        base_current = self.current_nominal + random.uniform(-1, 1)
+
+        # Determine anomaly type if fraud
+        anomaly_type = None
+        if is_fraud:
+            # Randomly pick one of the fraud rules from the PDF
+            anomaly_type = random.choice(["voltage_spike", "voltage_dip", "current_spike", "energy_drop"])
+
+        for t in range(duration_seconds):
+            # Normal variations
+            voltage = round(base_voltage + random.uniform(-1, 1), 1)
+            current = round(base_current + random.uniform(-0.5, 0.5), 1)
+            
+            # Inject Anomaly (roughly in the middle of the session, e.g., seconds 10-15)
+            is_anomaly_time = (t >= 10 and t < 15)
+            
+            if is_fraud and is_anomaly_time:
+                if anomaly_type == "voltage_spike":
+                    voltage = round(random.uniform(265, 290), 1) # Rule: > 260 [cite: 168]
+                elif anomaly_type == "voltage_dip":
+                    voltage = round(random.uniform(150, 190), 1) # Rule: < 200 [cite: 168]
+                elif anomaly_type == "current_spike":
+                    current = round(random.uniform(55, 80), 1)   # Rule: > 50 [cite: 169]
+                elif anomaly_type == "energy_drop":
+                    # Directly manipulate energy to drop
+                    energy_kwh = max(0, energy_kwh - 0.02) # Rule: Energy decreases [cite: 170]
+            
+            # Calculate Energy (Skip accumulation if we are simulating an energy drop anomaly)
+            if not (is_fraud and is_anomaly_time and anomaly_type == "energy_drop"):
+                power_kw = (voltage * current) / 1000.0
+                energy_step = power_kw * (self.dt / 3600.0)
+                energy_kwh += energy_step
+            
+            status = "charging" if t < duration_seconds - 1 else "finished"
+            
+            record = {
+                "time_index": t,
+                "session_id": session_id,
+                "voltage": voltage,
+                "current": current,
+                "energy_kwh": round(energy_kwh, 5),
+                "status": status,
+                # 'label' column is for your reference to check accuracy later
+                "label": "fraud" if is_fraud else "normal"
+            }
+            data.append(record)
+            
+        return data
+
+# --- MAIN GENERATION ---
+if __name__ == "__main__":
+    # Configuration for > 1000 rows
+    NUM_SESSIONS = 50
+    DURATION_PER_SESSION = 30 # 50 sessions * 30 seconds = 1500 rows
+    FRAUD_RATIO = 0.2         # 20% of sessions will be fraudulent
+
+    sim = EVSessionSimulator()
+    all_data = []
+
+    print(f"Generating {NUM_SESSIONS} sessions ({DURATION_PER_SESSION}s each)...")
+
+    for i in range(1, NUM_SESSIONS + 1):
+        sid = f"S{i}"
+        # Determine if this session is fraud based on random chance
+        is_fraud = True if random.random() < FRAUD_RATIO else False
+        
+        session_data = sim.generate_session(sid, is_fraud, DURATION_PER_SESSION)
+        all_data.extend(session_data)
+
+    df = pd.DataFrame(all_data)
+    
+    # Save to CSV
+    csv_filename = "large_synthetic_ev_data.csv"
+    df.to_csv(csv_filename, index=False)
+    
+    print("-" * 50)
+    print(f"Done! Generated {len(df)} rows.")
+    print(f"Saved to: {csv_filename}")
+    print("-" * 50)
+    print("Sample Data:")
+    print(df.head())
+
+================
+File: guardian-agent/model/fraud_detect.py
+================
+from flask import Flask, request, jsonify
+import pandas as pd
+
+app = Flask(__name__)
+
+class GuardianAgent:
+    def __init__(self):
+        # [cite_start]Rules defined in PDF Section 3 [cite: 1]
+        self.MIN_VOLTAGE = 200
+        self.MAX_VOLTAGE = 260
+        self.MAX_CURRENT = 50
+        
+    def check_session(self, session_data):
+        """
+        Analyzes a session's data points (list of dicts) to detect fraud.
+        Returns: 'VALID' or 'FRAUD' along with a reason.
+        """
+        previous_energy = -1.0
+        
+        # Convert list of dicts to DataFrame for easy processing
+        df = pd.DataFrame(session_data)
+
+        for index, row in df.iterrows():
+            voltage = row['voltage']
+            current = row['current']
+            energy = row['energy_kwh']
+            
+            # Rule 1: Voltage Safety Range
+            if voltage < self.MIN_VOLTAGE or voltage > self.MAX_VOLTAGE:
+                return "FRAUD", f"Voltage anomaly detected: {voltage}V at t={row['time_index']}"
+            
+            # Rule 2: Current Safety Range
+            if current < 0 or current > self.MAX_CURRENT:
+                return "FRAUD", f"Current anomaly detected: {current}A at t={row['time_index']}"
+            
+            # [cite_start]Rule 3: Energy must be non-decreasing [cite: 1]
+            if previous_energy != -1.0 and energy < previous_energy:
+                 return "FRAUD", f"Energy decrease detected at t={row['time_index']} ({previous_energy} -> {energy})"
+            
+            previous_energy = energy
+            
+        # [cite_start]Rule 4: If finished with no fraud found -> VALID [cite: 1]
+        return "VALID", "Session completed normally."
+
+# --- API Endpoint for the Node.js Agent ---
+guardian = GuardianAgent()
+
+@app.route('/predict', methods=['POST'])
+def predict():
+    try:
+        # 1. Receive JSON data from Node.js
+        # Expected format: { "session_id": "S1", "data": [ { "time_index": 0, "voltage": 230... } ] }
+        req_data = request.json
+        session_id = req_data.get('session_id', 'Unknown')
+        session_readings = req_data.get('data', [])
+
+        if not session_readings:
+            return jsonify({"status": "ERROR", "reason": "No data provided"}), 400
+
+        # 2. Run the Logic
+        decision, reason = guardian.check_session(session_readings)
+
+        # 3. Return the verdict
+        return jsonify({
+            "session_id": session_id,
+            "status": decision,
+            "reason": reason
+        })
+
+    except Exception as e:
+        return jsonify({"status": "ERROR", "reason": str(e)}), 500
+
+if __name__ == "__main__":
+    # Run the server on Port 5000
+    print("Guardian AI Brain is running on port 5000...")
+    app.run(host='0.0.0.0', port=5000)
+
+================
+File: raw-data-feed/charger_sim.py
+================
+import random
+import pandas as pd
+
+class EVSessionSimulator:
+    def __init__(self):
+        self.voltage_nominal = 230
+        self.current_nominal = 10
+        self.dt = 1 # 1 second time step
+
+    def generate_session(self, session_id, is_fraud=False, duration_seconds=30):
+        data = []
+        energy_kwh = 0.0
+        
+        # Assign a stable random baseline for this session
+        base_voltage = self.voltage_nominal + random.uniform(-3, 3)
+        base_current = self.current_nominal + random.uniform(-1, 1)
+
+        # Determine anomaly type if fraud
+        anomaly_type = None
+        if is_fraud:
+            # Randomly pick one of the fraud rules from the PDF
+            anomaly_type = random.choice(["voltage_spike", "voltage_dip", "current_spike", "energy_drop"])
+
+        for t in range(duration_seconds):
+            # Normal variations
+            voltage = round(base_voltage + random.uniform(-1, 1), 1)
+            current = round(base_current + random.uniform(-0.5, 0.5), 1)
+            
+            # Inject Anomaly (roughly in the middle of the session, e.g., seconds 10-15)
+            is_anomaly_time = (t >= 10 and t < 15)
+            
+            if is_fraud and is_anomaly_time:
+                if anomaly_type == "voltage_spike":
+                    voltage = round(random.uniform(265, 290), 1) # Rule: > 260 [cite: 168]
+                elif anomaly_type == "voltage_dip":
+                    voltage = round(random.uniform(150, 190), 1) # Rule: < 200 [cite: 168]
+                elif anomaly_type == "current_spike":
+                    current = round(random.uniform(55, 80), 1)   # Rule: > 50 [cite: 169]
+                elif anomaly_type == "energy_drop":
+                    # Directly manipulate energy to drop
+                    energy_kwh = max(0, energy_kwh - 0.02) # Rule: Energy decreases [cite: 170]
+            
+            # Calculate Energy (Skip accumulation if we are simulating an energy drop anomaly)
+            if not (is_fraud and is_anomaly_time and anomaly_type == "energy_drop"):
+                power_kw = (voltage * current) / 1000.0
+                energy_step = power_kw * (self.dt / 3600.0)
+                energy_kwh += energy_step
+            
+            status = "charging" if t < duration_seconds - 1 else "finished"
+            
+            record = {
+                "time_index": t,
+                "session_id": session_id,
+                "voltage": voltage,
+                "current": current,
+                "energy_kwh": round(energy_kwh, 5),
+                "status": status,
+                # 'label' column is for your reference to check accuracy later
+                "label": "fraud" if is_fraud else "normal"
+            }
+            data.append(record)
+            
+        return data
+
+# --- MAIN GENERATION ---
+if __name__ == "__main__":
+    # Configuration for > 1000 rows
+    NUM_SESSIONS = 50
+    DURATION_PER_SESSION = 30 # 50 sessions * 30 seconds = 1500 rows
+    FRAUD_RATIO = 0.2         # 20% of sessions will be fraudulent
+
+    sim = EVSessionSimulator()
+    all_data = []
+
+    print(f"Generating {NUM_SESSIONS} sessions ({DURATION_PER_SESSION}s each)...")
+
+    for i in range(1, NUM_SESSIONS + 1):
+        sid = f"S{i}"
+        # Determine if this session is fraud based on random chance
+        is_fraud = True if random.random() < FRAUD_RATIO else False
+        
+        session_data = sim.generate_session(sid, is_fraud, DURATION_PER_SESSION)
+        all_data.extend(session_data)
+
+    df = pd.DataFrame(all_data)
+    
+    # Save to CSV
+    csv_filename = "large_synthetic_ev_data.csv"
+    df.to_csv(csv_filename, index=False)
+    
+    print("-" * 50)
+    print(f"Done! Generated {len(df)} rows.")
+    print(f"Saved to: {csv_filename}")
+    print("-" * 50)
+    print("Sample Data:")
+    print(df.head())
+
+
+
+
+
+================================================================
+End of Codebase
+================================================================
