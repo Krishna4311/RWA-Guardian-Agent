@@ -60,79 +60,19 @@ export default function LiveSessionChart({
   ]);
   const [selectedMetric, setSelectedMetric] = useState<MetricType>('voltage');
   const [totalDataPoints, setTotalDataPoints] = useState(0);
-  
+
   useEffect(() => {
+    // If we are in "simulation mode" (which Dashboard passes as sessionActive),
+    // we actually want to poll the LIVE API because the backend is doing the simulation.
+    // The previous logic used local CSV for simulation, but now we have a backend.
+
     if (simulationMode) {
-      let intervalId: number | undefined;
-      let datasetIndex = 0;
-      let dataset: CSVRow[] = [];
-  
-      const startSimulation = async () => {
-        try {
-          // 1. Load the dataset (converted CSV) from public/
-          const response = await fetch('/large_synthetic_ev_data.json');
-          const allRows: CSVRow[] = await response.json();
-  
-          // (Optional) Use only one session, e.g., S1
-          const rows = allRows.filter((row) => row.session_id === 'S1');
-  
-          if (rows.length === 0) {
-            console.warn('No rows found for session S1, falling back to full dataset');
-            dataset = allRows;
-          } else {
-            dataset = rows;
-          }
-  
-          // Reset chart data
-          setData([]);
-          setTotalDataPoints(0);
-          datasetIndex = 0;
-  
-          // 2. Every second, push the next row from the dataset into the chart
-          intervalId = window.setInterval(() => {
-            if (dataset.length === 0) return;
-            
-            const row = dataset[datasetIndex];
-  
-            const newDataPoint: DataPoint = {
-              time: `${row.time_index}s`,   // from CSV
-              voltage: row.voltage,        // from CSV
-              current: row.current,        // from CSV
-              energy_kwh: row.energy_kwh,  // from CSV
-            };
-  
-            setData((prevData) => {
-              const updated = [...prevData, newDataPoint];
-              // Keep only last 60 points for performance
-              return updated.slice(-60);
-            });
-            
-            // Increment total data points counter
-            setTotalDataPoints((prev) => prev + 1);
-  
-            // Move to the next row, loop back at the end
-            datasetIndex = (datasetIndex + 1) % dataset.length;
-          }, 1000);
-        } catch (error) {
-          console.error('Failed to start CSV-based simulation:', error);
-        }
-      };
-  
-      startSimulation();
-  
-      // Cleanup on unmount or when simulationMode changes
-      return () => {
-        if (intervalId !== undefined) {
-          window.clearInterval(intervalId);
-        }
-      };
-    } else {
-      // Real API mode: poll the backend (keep your existing code here)
+      // Real API mode: poll the backend
       const interval = setInterval(async () => {
         try {
           const response = await fetch(apiEndpoint);
           const result = await response.json();
-  
+
           if (result.voltage !== undefined) {
             setData((prevData) => {
               const newTime = prevData.length;
@@ -142,11 +82,11 @@ export default function LiveSessionChart({
                 current: result.current || 10,
                 energy_kwh: result.energy_kwh || 0,
               };
-  
+
               const updated = [...prevData, newDataPoint];
               return updated.slice(-60);
             });
-            
+
             // Increment total data points counter
             setTotalDataPoints((prev) => prev + 1);
           }
@@ -154,8 +94,12 @@ export default function LiveSessionChart({
           console.error('Failed to fetch voltage data:', error);
         }
       }, 1000);
-  
+
       return () => clearInterval(interval);
+    } else {
+      // Idle state or local CSV fallback (optional, for now just do nothing or reset)
+      // If we want to show static data or nothing when idle:
+      return;
     }
   }, [simulationMode, apiEndpoint]);
 
@@ -346,7 +290,7 @@ export default function LiveSessionChart({
         <div>
           <p className="text-xs text-[#6b7280] uppercase tracking-widest">Current</p>
           <p className="text-sm text-[#00d9ff] font-semibold">
-            {selectedMetric === 'energy_kw' 
+            {selectedMetric === 'energy_kw'
               ? `${chartConfig.currentValue.toFixed(5)}${chartConfig.unit}`
               : `${chartConfig.currentValue.toFixed(1)}${chartConfig.unit}`
             }

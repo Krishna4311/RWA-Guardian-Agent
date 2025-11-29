@@ -19,6 +19,7 @@ import {
   generateFraudulentReading,
 } from "./simulator.js";
 import { streamGenerator, evaluateReading } from "./stream-engine.js";
+import { logService } from "./services/LogService.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -223,6 +224,19 @@ async function startServer() {
     req.on("close", () => {
       unsubscribe();
     });
+  });
+
+  /**
+   * GET /api/logs/stream
+   * Server-Sent Events endpoint for backend logs (Glass Box Debugging).
+   */
+  app.get("/api/logs/stream", (req: Request, res: Response) => {
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
+    res.flushHeaders();
+
+    logService.addClient(res);
   });
 
   /**

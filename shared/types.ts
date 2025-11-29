@@ -114,6 +114,8 @@ export interface BlockchainRecord {
     reading: StreamReading;
     blockNumber?: number;
     confirmations?: number;
+    masumiTxId?: string;
+    isVerified?: boolean;
 }
 
 export interface BlockchainRecordsResponse {

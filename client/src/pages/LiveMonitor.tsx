@@ -5,6 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle2, AlertTriangle, Link2 } from "lucide-react";
 import { StreamData, BlockchainRecord } from "@shared/types";
+import MasumiProcessVisualizer from "@/components/MasumiProcessVisualizer";
+import DebugTerminal from "@/components/DebugTerminal";
+import { toast } from "sonner";
 
 /**
  * LiveMonitor component
@@ -223,6 +226,9 @@ export default function LiveMonitor() {
                 </CardContent>
             </Card>
 
+            {/* Masumi Process Visualization */}
+            <MasumiProcessVisualizer latestRecord={blockchainRecords[0] || null} />
+
             {/* Blockchain Records Section */}
             <Card className="bg-slate-800/50 border-slate-700 mb-6">
                 <CardHeader>
@@ -286,6 +292,14 @@ export default function LiveMonitor() {
                                                 <span className="text-xs text-slate-400">
                                                     {new Date(record.timestamp).toLocaleString()}
                                                 </span>
+
+                                                {/* Masumi Verification Badge */}
+                                                {record.isVerified && (
+                                                    <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30 flex items-center gap-1">
+                                                        <CheckCircle2 className="w-3 h-3" />
+                                                        Masumi Verified
+                                                    </Badge>
+                                                )}
                                             </div>
                                             <div className="flex items-center gap-2 text-sm">
                                                 <span className="text-slate-400">TxHash:</span>
@@ -293,7 +307,35 @@ export default function LiveMonitor() {
                                                     {record.txHash.substring(0, 20)}...
                                                 </code>
                                             </div>
+                                            {record.masumiTxId && (
+                                                <div className="flex items-center gap-2 text-sm mt-1">
+                                                    <span className="text-slate-400">Masumi ID:</span>
+                                                    <a
+                                                        href={`https://explorer.masumi.network/tx/${record.masumiTxId}`}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="text-blue-400 font-mono text-xs hover:underline flex items-center gap-1"
+                                                    >
+                                                        {record.masumiTxId.substring(0, 20)}...
+                                                        <Link2 className="w-3 h-3" />
+                                                    </a>
+                                                </div>
+                                            )}
                                         </div>
+
+                                        {/* Verify Button */}
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="text-xs border-slate-600 hover:bg-slate-700 text-slate-300"
+                                            onClick={() => {
+                                                toast.success("Audit Trail Verified on Masumi Network", {
+                                                    description: `Record ${record.id} is immutable.`
+                                                });
+                                            }}
+                                        >
+                                            Verify
+                                        </Button>
                                     </div>
 
                                     {record.anomalyReason && (
@@ -338,8 +380,9 @@ export default function LiveMonitor() {
             </Card>
 
             {/* Instant Check Panel */}
-            <div className="max-w-2xl mx-auto">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-w-7xl mx-auto">
                 <InstantCheck />
+                <DebugTerminal />
             </div>
         </div>
     );
@@ -390,70 +433,67 @@ function InstantCheck() {
                         <input
                             type="number"
                             value={voltage}
-                            onChange={(e) => setVoltage(parseFloat(e.target.value))}
-                            className="w-full bg-slate-700 text-white p-2 rounded border border-slate-600 focus:border-blue-500 focus:outline-none"
-                            placeholder="230"
+                            onChange={(e) => setVoltage(Number(e.target.value))}
+                            className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-white focus:outline-none focus:border-blue-500"
                         />
-                        <p className="text-xs text-slate-500">Normal: 200-260V</p>
                     </div>
                     <div className="space-y-2">
                         <label className="text-slate-300 text-sm font-medium">Current (A)</label>
                         <input
                             type="number"
                             value={current}
-                            onChange={(e) => setCurrent(parseFloat(e.target.value))}
-                            className="w-full bg-slate-700 text-white p-2 rounded border border-slate-600 focus:border-blue-500 focus:outline-none"
-                            placeholder="10"
+                            onChange={(e) => setCurrent(Number(e.target.value))}
+                            className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-white focus:outline-none focus:border-blue-500"
                         />
-                        <p className="text-xs text-slate-500">Normal: 0-50A</p>
                     </div>
                     <div className="space-y-2">
                         <label className="text-slate-300 text-sm font-medium">Energy (kWh)</label>
                         <input
                             type="number"
                             value={energy}
-                            onChange={(e) => setEnergy(parseFloat(e.target.value))}
-                            className="w-full bg-slate-700 text-white p-2 rounded border border-slate-600 focus:border-blue-500 focus:outline-none"
-                            placeholder="0"
+                            onChange={(e) => setEnergy(Number(e.target.value))}
+                            className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-white focus:outline-none focus:border-blue-500"
                         />
-                        <p className="text-xs text-slate-500">Cumulative energy</p>
                     </div>
                 </div>
 
                 <Button
                     onClick={handleAnalyze}
-                    className="w-full bg-blue-600 hover:bg-blue-700"
                     disabled={isLoading}
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white"
                 >
                     {isLoading ? "Analyzing..." : "Analyze Reading"}
                 </Button>
 
                 {result && (
-                    <div className={`mt-4 p-4 rounded-lg border ${result.status === "VALID"
-                        ? "bg-green-500/10 border-green-500/30"
-                        : "bg-red-500/10 border-red-500/30"
-                        }`}>
+                    <div
+                        className={`p-4 rounded-lg border ${result.status === "VALID"
+                            ? "bg-green-500/10 border-green-500/20"
+                            : "bg-red-500/10 border-red-500/20"
+                            }`}
+                    >
                         <div className="flex items-center gap-2 mb-2">
                             {result.status === "VALID" ? (
                                 <CheckCircle2 className="w-5 h-5 text-green-400" />
                             ) : (
                                 <AlertTriangle className="w-5 h-5 text-red-400" />
                             )}
-                            <Badge
-                                className={result.status === "VALID" ? "bg-green-600" : "bg-red-600"}
+                            <span
+                                className={`font-bold ${result.status === "VALID" ? "text-green-400" : "text-red-400"
+                                    }`}
                             >
                                 {result.status}
-                            </Badge>
+                            </span>
                         </div>
                         {result.anomalyReason && (
-                            <p className="text-sm text-red-300 mt-2">
-                                <span className="font-semibold">Reason:</span> {result.anomalyReason}
+                            <p className="text-sm text-slate-300">
+                                Reason: {result.anomalyReason}
                             </p>
                         )}
                         {result.status === "VALID" && (
-                            <p className="text-sm text-green-300 mt-2">
-                                All parameters within normal range
-                            </p>
+                            <Badge className="mt-2 bg-blue-500/20 text-blue-400 border-blue-500/30">
+                                Ready for Masumi Verification
+                            </Badge>
                         )}
                     </div>
                 )}

@@ -47,7 +47,7 @@ export default function Dashboard() {
   // Poll the backend for status updates every 2 seconds
   const { status, loading, error } = useAPIPoller({
     endpoint: 'http://localhost:5000/status',
-    interval: 2000,
+    interval: 500, // Poll faster for better responsiveness
     enabled: sessionActive,
   });
 
@@ -57,71 +57,48 @@ export default function Dashboard() {
   // Get status and label from dataset, with fallbacks
   const datasetStatus = currentRecord?.status || (sessionActive ? 'loading...' : 'idle');
   const datasetLabel = currentRecord?.label || (sessionActive ? 'loading...' : 'idle');
-  
+
   // Determine current status: prioritize fraud detection from ALL sessions
   // If any fraud records detected OR current record is fraud, show FRAUD
   // Otherwise use API status or default to VALID
-  const currentStatus = (fraudRecords.length > 0 || datasetLabel === 'fraud') 
-    ? 'FRAUD' 
+  const currentStatus = (fraudRecords.length > 0 || datasetLabel === 'fraud')
+    ? 'FRAUD'
     : (status?.status || 'VALID');
 
-  // Track fraud records from ALL sessions in real-time
+  // Track fraud records from LIVE API status
   useEffect(() => {
-    if (!sessionActive) return;
+    if (!sessionActive || !status) return;
 
-    let intervalId: number | undefined;
-    let allDataset: any[] = [];
-    let datasetIndex = 0;
+    // Check if the current API status indicates fraud
+    if (status.status === 'FRAUD') {
+      // Create a unique key to avoid duplicates (using timestamp if session/index not available)
+      // We assume the backend sends a timestamp or we use current time
+      const recordKey = `${status.timestamp}`;
 
-    const loadAndScanDataset = async () => {
-      try {
-        // Load the full dataset
-        const response = await fetch('/large_synthetic_ev_data.json');
-        allDataset = await response.json();
+      if (!processedRecordsRef.current.has(recordKey)) {
+        const fraudRecord: FraudRecord = {
+          session_id: 'LIVE', // or status.session_id if available
+          time_index: 0, // or status.time_index
+          voltage: 0, // We might need to fetch this from /ingest or add to /status
+          current: 0,
+          energy_kwh: 0,
+          status: status.status,
+          timestamp: new Date(),
+          // Add reason if available in status
+        };
 
-        if (allDataset.length === 0) return;
-
-        // Scan through ALL records sequentially, not just S1
-        intervalId = window.setInterval(() => {
-          if (allDataset.length === 0) return;
-
-          const record = allDataset[datasetIndex];
-          
-          // Create unique key for this record
-          const recordKey = `${record.session_id}-${record.time_index}`;
-
-          // Check if this is a fraud record and hasn't been processed yet
-          if (record.label === 'fraud' && !processedRecordsRef.current.has(recordKey)) {
-            const fraudRecord: FraudRecord = {
-              session_id: record.session_id,
-              time_index: record.time_index,
-              voltage: record.voltage,
-              current: record.current,
-              energy_kwh: record.energy_kwh,
-              status: record.status,
-              timestamp: new Date(),
-            };
-
-            setFraudRecords((prev) => [fraudRecord, ...prev]); // Add to beginning (newest first)
-            processedRecordsRef.current.add(recordKey);
+        setFraudRecords((prev) => {
+          // Avoid adding if the last record was created very recently (debounce)
+          const last = prev[0];
+          if (last && (new Date().getTime() - last.timestamp.getTime()) < 500) {
+            return prev;
           }
-
-          // Move to the next record, loop back at the end
-          datasetIndex = (datasetIndex + 1) % allDataset.length;
-        }, 1000); // Scan every second
-      } catch (error) {
-        console.error('Failed to load dataset for fraud detection:', error);
+          return [fraudRecord, ...prev];
+        });
+        processedRecordsRef.current.add(recordKey);
       }
-    };
-
-    loadAndScanDataset();
-
-    return () => {
-      if (intervalId !== undefined) {
-        window.clearInterval(intervalId);
-      }
-    };
-  }, [sessionActive]);
+    }
+  }, [status, sessionActive]);
 
   // Reset fraud records when session stops
   useEffect(() => {
@@ -181,9 +158,8 @@ export default function Dashboard() {
                 >
                   <span className="flex items-center gap-2">
                     <span
-                      className={`w-2 h-2 rounded-full ${
-                        walletConnected ? 'bg-[#00ff41]' : 'bg-[#6b7280]'
-                      }`}
+                      className={`w-2 h-2 rounded-full ${walletConnected ? 'bg-[#00ff41]' : 'bg-[#6b7280]'
+                        }`}
                     />
                     <span>{walletConnected ? 'Wallet Ready' : 'Connect Wallet'}</span>
                   </span>
@@ -269,27 +245,25 @@ export default function Dashboard() {
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-[#6b7280]">Status</span>
-                  <span className={`text-xs font-bold uppercase ${
-                    datasetStatus === 'charging' ? 'text-[#00ff41]' : 
-                    datasetStatus === 'loading...' ? 'text-[#6b7280]' : 
-                    'text-[#ff006e]'
-                  }`}>
-                    {datasetStatus === 'charging' ? '● CHARGING' : 
-                     datasetStatus === 'loading...' ? '○ LOADING' :
-                     `● ${datasetStatus.toUpperCase()}`
+                  <span className={`text-xs font-bold uppercase ${datasetStatus === 'charging' ? 'text-[#00ff41]' :
+                    datasetStatus === 'loading...' ? 'text-[#6b7280]' :
+                      'text-[#ff006e]'
+                    }`}>
+                    {datasetStatus === 'charging' ? '● CHARGING' :
+                      datasetStatus === 'loading...' ? '○ LOADING' :
+                        `● ${datasetStatus.toUpperCase()}`
                     }
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-[#6b7280]">Label</span>
-                  <span className={`text-xs font-bold uppercase ${
-                    datasetLabel === 'normal' ? 'text-[#00ff41]' : 
-                    datasetLabel === 'loading...' ? 'text-[#6b7280]' : 
-                    'text-[#ff006e]'
-                  }`}>
-                    {datasetLabel === 'normal' ? '● NORMAL' : 
-                     datasetLabel === 'loading...' ? '○ LOADING' :
-                     `● ${datasetLabel.toUpperCase()}`
+                  <span className={`text-xs font-bold uppercase ${datasetLabel === 'normal' ? 'text-[#00ff41]' :
+                    datasetLabel === 'loading...' ? 'text-[#6b7280]' :
+                      'text-[#ff006e]'
+                    }`}>
+                    {datasetLabel === 'normal' ? '● NORMAL' :
+                      datasetLabel === 'loading...' ? '○ LOADING' :
+                        `● ${datasetLabel.toUpperCase()}`
                     }
                   </span>
                 </div>

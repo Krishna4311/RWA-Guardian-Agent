@@ -1,6 +1,6 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 @import "tw-animate-css";
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&display=swap');
 
 @custom-variant dark (&:is(.dark *));
 
@@ -118,10 +118,12 @@
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
     font-family: 'IBM Plex Mono', monospace;
   }
+
   button:not(:disabled),
   [role="button"]:not([aria-disabled="true"]),
   [type="button"]:not(:disabled),
@@ -193,8 +195,13 @@
   }
 
   @keyframes scan-lines {
-    0% { transform: translateY(-100%); }
-    100% { transform: translateY(100%); }
+    0% {
+      transform: translateY(-100%);
+    }
+
+    100% {
+      transform: translateY(100%);
+    }
   }
 
   .scan-animation {
@@ -202,8 +209,15 @@
   }
 
   @keyframes pulse-glow {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.7; }
+
+    0%,
+    100% {
+      opacity: 1;
+    }
+
+    50% {
+      opacity: 0.7;
+    }
   }
 
   .pulse-glow {
@@ -211,8 +225,15 @@
   }
 
   @keyframes danger-flash {
-    0%, 100% { box-shadow: 0 0 10px rgba(255, 0, 110, 0.5), inset 0 0 10px rgba(255, 0, 110, 0.1); }
-    50% { box-shadow: 0 0 30px rgba(255, 0, 110, 1), inset 0 0 20px rgba(255, 0, 110, 0.3); }
+
+    0%,
+    100% {
+      box-shadow: 0 0 10px rgba(255, 0, 110, 0.5), inset 0 0 10px rgba(255, 0, 110, 0.1);
+    }
+
+    50% {
+      box-shadow: 0 0 30px rgba(255, 0, 110, 1), inset 0 0 20px rgba(255, 0, 110, 0.3);
+    }
   }
 
   .danger-flash {

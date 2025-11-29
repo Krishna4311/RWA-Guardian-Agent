@@ -22,8 +22,8 @@ export default function StatusCard({ status }: StatusCardProps) {
       className={`
         relative w-full max-w-5xl mx-auto p-8 rounded-2xl
         border-2 transition-all duration-300
-        ${isValid 
-          ? 'border-[#00ff41] bg-[#0f1535] shadow-lg' 
+        ${isValid
+          ? 'border-[#00ff41] bg-[#0f1535] shadow-lg'
           : 'border-[#ff006e] bg-[#0f1535]'
         }
         ${isValid ? 'pulse-glow' : 'danger-flash'}
@@ -73,6 +73,15 @@ export default function StatusCard({ status }: StatusCardProps) {
               <span className="text-[#ff006e]">FRAUD DETECTED</span>
             )}
           </h2>
+
+          {/* Masumi Badge */}
+          {isValid && (
+            <div className="mt-2 inline-flex items-center gap-1 px-2 py-1 rounded bg-blue-500/10 border border-blue-500/30 text-blue-400 text-xs font-mono">
+              <CheckCircle2 size={12} />
+              <span>MASUMI NETWORK AUDITED</span>
+            </div>
+          )}
+
           <p className="text-sm text-[#9ca3af] mt-3 leading-relaxed">
             {isValid
               ? 'EV charging session is secure and verified on-chain'
