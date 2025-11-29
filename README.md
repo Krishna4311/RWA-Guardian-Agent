@@ -1,243 +1,211 @@
-# RWA Dashboard - EV Charging Mission Control
+### RWA Guardian Agent
 
-A **Cyberpunk Command Center** dashboard for visualizing EV charging sessions in real-time with wallet integration, voltage monitoring, and fraud detection.
+Team:
 
-## 🎨 Design Philosophy
-
-This dashboard follows the **Cyberpunk Command Center** aesthetic with:
-- **Neon cyan (#00d9ff)** primary accent for trust and precision
-- **Neon green (#00ff41)** for safe/verified states
-- **Hot magenta (#ff006e)** for danger/fraud alerts
-- **Deep navy (#0a0e27)** background for high contrast
-- **IBM Plex Mono** monospace typography for technical authority
-- **Glowing borders** and animated effects for urgency and sophistication
-
-## 📋 Features
-
-### Task 1: MeshSDK Wallet Integration ✅
-- **CardanoWallet Component** placeholder ready for MeshSDK integration
-- Wallet connection/disconnection UI in top-right corner
-- Address display with copy-to-clipboard functionality
-- Connected state indicator with pulse animation
-
-### Task 2: Real-Time Voltage Chart ✅
-- **LiveSessionChart Component** using Recharts
-- Line graph displaying voltage over time (220-240V range)
-- **Simulation Mode**: Generates realistic fake voltage data every second
-- Reference lines for safe operating range (MIN 220V, MAX 240V)
-- Smooth animations and neon cyan styling
-- Ready to connect to real backend API
-
-### Task 3: Status Card ✅
-- **StatusCard Component** with two visual states:
-  - **SAFE (Green)**: Checkmark icon, "VERIFIED" text, gentle pulse animation
-  - **DANGER (Red)**: Warning triangle icon, "FRAUD DETECTED" text, aggressive flash animation
-- Accepts `status` prop ('VALID' or 'FRAUD') to switch states
-- Scan-line overlay effect for cyberpunk aesthetic
-- Glowing borders with color-matched shadows
-
-### Task 4: API Polling ✅
-- **useAPIPoller Hook** for polling backend endpoints
-- Default endpoint: `http://localhost:5000/status`
-- Configurable polling interval (default 2 seconds)
-- Automatic status updates when session is active
-- Error handling and loading states
-
-## 🚀 Getting Started
-
-### Installation
-
-```bash
-# Install dependencies
-pnpm install
-
-# Start development server
-pnpm dev
+```mermaid
+flowchart LR
+    L1["BLOCKCHAIN <br/>━━━━━━━━━<br/>👤 Rakesh"]
+    
+    L2["BLOCKCHAIN<br/>━━━━━━━━━<br/>👤 Vinuta"]
+    
+    AI1["AI/ML<br/>━━━━━━━━━<br/>👤 Tarun"]
+    
+    UI["AI/ML<br/>━━━━━━━━━<br/>👤 Shine"]
+    
+    IOT["IoT<br/>━━━━━━━━━<br/>👤 Rabbani"]
+    
+    L1 ~~~ L2 ~~~ AI1 ~~~ UI ~~~ IOT
+    
+    style L1 fill:#000000,stroke:#16213e,stroke-width:3px,color:#fff
+    style L2 fill:#000000,stroke:#16213e,stroke-width:3px,color:#fff
+    style AI1 fill:#16213e,stroke:#0f3460,stroke-width:3px,color:#fff
+    style UI fill:#16213e,stroke:#0f3460,stroke-width:3px,color:#fff
+    style IOT fill:#1a1a2e,stroke:#16213e,stroke-width:3px,color:#fff
 ```
 
-The dashboard will be available at `http://localhost:3000`
 
-### Project Structure
+Project Summary: The "RWA Guardian Agent" is a specialized, autonomous AI security agent built on the Masumi Network. It is designed to solve the critical "Trilemma of Trust" (Data Fraud, Identity Fraud, and Scalability Failure) for Real-World Assets (RWAs) tokenized on the Cardano blockchain.
+
+Our solution provides a 24/7, verifiable security service. It uses a hybrid AI (Python \+ Node.js) architecture, a Hydra Head (L2) for high-speed real-time IoT data monitoring, and an Aiken (L1) smart contract for on-chain security. The agent's identity is secured by Masumi's Identity & Trust protocol (Atala PRISM), and its findings are recorded immutably using Masumi's "Decision Logging" feature.
+
+---
+
+### 1\. Problem Statement
+
+The tokenization of Real-World Assets (RWAs) is a multi-trillion dollar opportunity, but it is fundamentally blocked by a Critical Trilemma of Trust:
+
+* Data Fraud: On-chain contracts are "blind." They must trust the data they are fed from off-chain oracles and IoT sensors. This "garbage in, garbage out" problem means a single hacked or faulty sensor can be exploited to drain millions from a protocol.  
+* Identity Fraud: Who is updating the asset? An anonymous wallet? A hackable, centralized API key? Without a verifiable, on-chain identity for the oracles and agents managing an asset, there is no true accountability or security.  
+* Scalability Failure: RWAs generate a constant, high-frequency stream of data (e.g., temperature checks, GPS pings, energy output). L1 blockchains are not built for this. The cost and speed limitations of L1 make real-time monitoring impossible, forcing projects to use centralized databases, which defeats the purpose of decentralization.
+
+---
+
+### 2\. Our Solution: The "RWA Guardian Agent"
+
+Our solution is a complete, end-to-end "trust-as-a-service" agent for RWAs. It is built as an "Agentic Service" on the Masumi Network, integrating four core concepts to solve the trilemma.
+
+1\. Solves Scalability Failure with Hydra (L2)
+
+* What it is: We use a Cardano Hydra Head as a high-speed, off-chain state channel.  
+* How we use it: This Hydra Head is our Kodosumi-inspired runtime environment. The AI agent and the (simulated) RWA IoT sensor are both participants. This allows the agent to monitor thousands of "micro-transactions" (e.g., temperature readings) in real-time with sub-second finality and near-zero cost.
+
+2\. Solves Identity Fraud with Masumi (Identity)
+
+* What it is: The Masumi Network protocol provides a foundational "Identity & Trust" layer for AI agents.  
+* How we use it: Our "RWA Guardian Agent" is registered on the Masumi Network and issued a Decentralized Identifier (DID) via Atala PRISM. This DID is its permanent, verifiable "passport," allowing it to cryptographically sign all its actions.
+
+3\. Solves Data Fraud with Aiken (L1) & Masumi (Logging)
+
+* What it is: We use Aiken—a modern, secure, and hackathon-friendly smart contract language—to build our L1 "Guard" contract.  
+* How we use it (The "Smart Escalation"):  
+  * Detection (L2): The agent detects an anomaly in the Hydra Head.  
+  * Logging (L1): The agent exits the Head and uses Masumi's "Decision Logging" feature to post an immutable, auditable "FRAUD" record on the L1.  
+  * Execution (L1): The agent then calls the Aiken "Guard" Contract, which verifies both the Agent's Atala DID and the Masumi Decision Log. Only if both are valid does it execute the "escalation" and change the RWA's on-chain status to "ALERT\!"
+
+4\. Solves the "AI Problem" with a Hybrid (Python \+ Node.js) Model
+
+* What it is: We use the best tool for each job. A pre-built Python (Flask/FastAPI) AI model, containerized with Docker, handles the complex fraud detection. A Node.js agent handles all the blockchain interactions.  
+* How we use it: The Node.js agent (in the Hydra Head) makes a simple REST API call to the Python AI service with the IoT data. This allows us to have a simple, reliable blockchain agent (Node.js) that gets its "brain" from a powerful, easily updatable Python model.
+
+---
+
+### 3\. Architecture & Technical Implementation
+
+Team Roles & Responsibilities:
+
+* Rakesh (Blockchain 1 \- L1):  
+  * Task: Develop the AtalaGuard.ak (Aiken) smart contract.  
+  * Tech: Aiken, Untyped Plutus Core (UPLC).  
+  * Logic: The validator script stores the Agent's Atala DID (PKH) in its datum. The redeemer is the new Status string. The contract must validate the agent's signature and reference a valid Masumi Decision Log.  
+* Vinuta (Blockchain 2 \- L2):  
+  * Task: Deploy the L2 infrastructure.  
+  * Tech: Cardano Node, Hydra Node, Masumi Node.  
+  * Logic: Sets up the Hydra Head for the agent and IoT device to communicate. Deploys the Masumi Node (Payment/Registry Services) so the agent can be registered and its logs can be read.  
+* Tarun & Shine (AI/ML \- Agent):  
+  * Task: Build the "AI Agent" brain and its Masumi integration.  
+  * Tech: Python (Flask/FastAPI), Docker, Node.js, MeshSDK, Masumi Protocol SDK.  
+  * Logic: (Pre-Hackathon) Build and containerize the Python AI fraud detection model. (Hackathon) The Node.js agent (fraud\_detector.js) reads data from Rabbani's feed. It then makes an API call to the Python AI service (running in Docker). If the AI returns "FRAUD", it triggers the "Escalation" function (logging via Masumi, calling Rakesh's contract via MeshSDK).  
+* Shine & Rabbani (UI):  
+  * Task: Build the user-facing "Investor Dashboard."  
+  * Tech: React, MeshSDK.  
+  * Logic: A simple React app that polls Rakesh's L1 contract for the dNFT's current metadata. It automatically updates the UI from "Verified" (Green) to "ALERT\!" (Red) when the "Smart Escalation" is successful.  
+* Rabbani (IoT):  
+  * Task: Build the simulated RWA data feed.  
+  * Tech: Node.js.  
+  * Logic: A data\_feed.js script that streams fake JSON data ({temp: 2.1}) into the Hydra Head. It includes a function to manually trigger an anomaly ({temp: 10.5}).
+
+```mermaid
+flowchart TB
+ subgraph OFF[" "]
+        direction TB
+        OFFTITLE["OFF-CHAIN / L2 INFRASTRUCTURE"]
+        C["API Gateway / Auth <br> DID / Wallet Auth"]
+        D["AI Guardian Agent <br> The Brain"]
+        E["Masumi Node <br> Registry / Logging"]
+        F["Hydra Head L2 <br> Kodosumi Runtime"]
+        G["IoT Data Feed <br> Simulated RWA"]
+  end
+ subgraph ON[" "]
+        direction TB
+        ONTITLE["ON-CHAIN / L1 CARDANO"]
+        H["Cardano Network"]
+        I["Aiken Guard Contract <br> Security"]
+        J["Atala PRISM DID <br> Agent Identity"]
+        K["Masumi Decision Log <br> Audit Trail"]
+  end
+    A["User / Mobile / Web"] --> B["Frontend App <br> React + MeshSDK"]
+    B --> C
+    C --> D & E
+    D -- Reads Data --> F
+    G -- Streams Data --> F
+    D -- Sends Escalation Tx --> H
+    E -- Manages Identity & Logs --> H
+    H --- I & J & K
+    H --> L["On-chain Record <br> RWA dNFT UTXO"]
+    
+    style OFFTITLE fill:#0a0e27,stroke:none,color:#4a90e2
+    style ONTITLE fill:#0a0e27,stroke:none,color:#4a90e2
+    style D fill:#533483,stroke:#16213e,stroke-width:3px,color:#fff
+    style H fill:#6a0572,stroke:#16213e,stroke-width:4px,color:#fff
+    style A fill:#1a1a2e,stroke:#16213e,stroke-width:3px,color:#fff
+    style B fill:#0f3460,stroke:#16213e,stroke-width:3px,color:#fff
+    style C fill:#16213e,stroke:#0f3460,stroke-width:3px,color:#fff
+    style E fill:#16213e,stroke:#0f3460,stroke-width:3px,color:#fff
+    style F fill:#0f3460,stroke:#16213e,stroke-width:3px,color:#fff
+    style G fill:#1a1a2e,stroke:#16213e,stroke-width:3px,color:#fff
+    style I fill:#16213e,stroke:#0f3460,stroke-width:3px,color:#fff
+    style J fill:#16213e,stroke:#0f3460,stroke-width:3px,color:#fff
+    style K fill:#16213e,stroke:#0f3460,stroke-width:3px,color:#fff
+    style L fill:#2e8b57,stroke:#16213e,stroke-width:4px,color:#fff
+    style OFF fill:#0a0e27,stroke:#533483,stroke-width:4px,color:#fff
+    style ON fill:#0a0e27,stroke:#6a0572,stroke-width:4px,color:#fff
+    
+    linkStyle default stroke:#4a90e2,stroke-width:2px
 
 ```
-rwa-dashboard/
-├── client/
-│   ├── src/
-│   │   ├── components/
-│   │   │   ├── StatusCard.tsx          # Status display with animations
-│   │   │   ├── LiveSessionChart.tsx    # Real-time voltage chart
-│   │   │   ├── WalletConnect.tsx       # Wallet connection UI
-│   │   │   └── ui/                     # shadcn/ui components
-│   │   ├── hooks/
-│   │   │   └── useAPIPoller.ts         # API polling hook
-│   │   ├── pages/
-│   │   │   ├── Dashboard.tsx           # Main dashboard page
-│   │   │   ├── Home.tsx                # Placeholder
-│   │   │   └── NotFound.tsx            # 404 page
-│   │   ├── App.tsx                     # Router and theme setup
-│   │   ├── index.css                   # Global styles with cyberpunk design
-│   │   └── main.tsx                    # React entry point
-│   └── index.html
-├── server/
-│   └── index.ts                        # Express server (static serving)
-├── shared/
-│   └── const.ts                        # Shared constants
-├── package.json
-├── vite.config.ts
-├── tsconfig.json
-└── ideas.md                            # Design exploration document
+
+### Process Flow (The "Smart Escalation" Demo):
+
+1. L2 Monitoring (Happy Path): Rabbani's feed streams good data. Tarun's Node.js agent sends this data to the Python AI service, which returns "VERIFIED". Shine's UI polls Rakesh's L1 contract and shows "VERIFIED".  
+2. L2 Anomaly: Rabbani triggers the anomaly (temp spikes).  
+3. L1 Escalation: The Node.js agent sends the bad data to the Python AI service, which returns "FRAUD". The agent then uses the Masumi Node to log its decision on-chain and calls Rakesh's Aiken contract with a transaction signed by its Atala DID.  
+4. L1 Result: The Aiken contract verifies the DID signature and the Masumi log. It executes, updating the dNFT's on-chain metadata.  
+5. UI "ALERT\!": Shine's UI polls the L1, sees the new metadata, and instantly flips to "ALERT\!", proving the end-to-end loop is successful.
+
+
+
+```mermaid
+flowchart LR
+    subgraph SETUP["SETUP"]
+        START[START] --> DID["AI Agent gets DID<br/>Masumi / Atala"]
+        DID --> DEPLOY["Deploy L1<br/>Contract"]
+        DEPLOY --> LOCK["Lock dNFT in<br/>Contract"]
+    end
+    
+    subgraph MON["MONITORING L2"]
+        IOT["IoT Data → L2<br/>Hydra Head /"] --> ANALYZE["AI Agent Analyzes<br/>Data"]
+        ANALYZE --> ANOM{"Anomaly?"}
+    end
+    
+    subgraph ACTION["ACTION L1"]
+        VERIFIED["Status:<br/>VERIFIED"]
+        EVENT["Event:"] --> FRAUD["Agent logs 'FRAUD'<br/>Masumi Decision"]
+        FRAUD --> CALL["Call L1<br/>Contract"]
+        CALL --> READ["Contract reads Masumi<br/>log,"]
+        READ --> ALERT["Status: ALERT!<br/>UI Polling"]
+    end
+    
+    LOCK -.-> IOT
+    ANOM -->|No| VERIFIED
+    ANOM -->|Yes| EVENT
+    
+    style START fill:#1a1a2e,stroke:#16213e,stroke-width:3px,color:#fff
+    style DID fill:#16213e,stroke:#0f3460,stroke-width:3px,color:#fff
+    style DEPLOY fill:#16213e,stroke:#0f3460,stroke-width:3px,color:#fff
+    style LOCK fill:#16213e,stroke:#0f3460,stroke-width:3px,color:#fff
+    style IOT fill:#16213e,stroke:#0f3460,stroke-width:3px,color:#fff
+    style ANALYZE fill:#533483,stroke:#16213e,stroke-width:3px,color:#fff
+    style ANOM fill:#6a0572,stroke:#16213e,stroke-width:3px,color:#fff
+    style VERIFIED fill:#2e8b57,stroke:#16213e,stroke-width:3px,color:#fff
+    style EVENT fill:#16213e,stroke:#0f3460,stroke-width:3px,color:#fff
+    style FRAUD fill:#16213e,stroke:#0f3460,stroke-width:3px,color:#fff
+    style CALL fill:#16213e,stroke:#0f3460,stroke-width:3px,color:#fff
+    style READ fill:#16213e,stroke:#0f3460,stroke-width:3px,color:#fff
+    style ALERT fill:#c41e3a,stroke:#16213e,stroke-width:3px,color:#fff
+    style SETUP fill:#0a0e27,stroke:#4a90e2,stroke-width:3px,color:#fff
+    style MON fill:#0a0e27,stroke:#533483,stroke-width:3px,color:#fff
+    style ACTION fill:#0a0e27,stroke:#6a0572,stroke-width:3px,color:#fff
+    
+    linkStyle default stroke:#4a90e2,stroke-width:2px
 ```
 
-## 🔧 Component API
+---
 
-### StatusCard
+### 4\. The Future & Business Model (Masumi Ecosystem)
 
-```tsx
-import StatusCard from '@/components/StatusCard';
+This hackathon project is the foundation for a real, monetizable business.
 
-<StatusCard status="VALID" />  // Green verified state
-<StatusCard status="FRAUD" />  // Red danger state
-```
+* Sokosumi (Marketplace): Our "RWA Guardian Agent" is not just a tool; it's a product. We will list it on Sokosumi, the Masumi agent marketplace.  
+* Masumi (Payments): Any RWA project on Cardano (a tokenized farm, a supply chain) can discover our agent on Sokosumi and hire it. They will pay it for its 24/7 security service using Masumi's "Agent Payments" protocol.
 
-**Props:**
-- `status: 'VALID' | 'FRAUD'` - Controls the visual state and animation
-
-### LiveSessionChart
-
-```tsx
-import LiveSessionChart from '@/components/LiveSessionChart';
-
-<LiveSessionChart 
-  simulationMode={true}
-  apiEndpoint="http://localhost:5000/ingest"
-/>
-```
-
-**Props:**
-- `simulationMode?: boolean` (default: true) - Enable fake data generation
-- `apiEndpoint?: string` - Backend endpoint for real voltage data
-
-### WalletConnect
-
-```tsx
-import WalletConnect from '@/components/WalletConnect';
-
-<WalletConnect 
-  onConnect={(address) => console.log(address)}
-  onDisconnect={() => console.log('disconnected')}
-/>
-```
-
-**Props:**
-- `onConnect?: (address: string) => void` - Callback when wallet connects
-- `onDisconnect?: () => void` - Callback when wallet disconnects
-
-### useAPIPoller
-
-```tsx
-import { useAPIPoller } from '@/hooks/useAPIPoller';
-
-const { status, loading, error } = useAPIPoller({
-  endpoint: 'http://localhost:5000/status',
-  interval: 2000,
-  enabled: true
-});
-```
-
-**Options:**
-- `endpoint: string` - API endpoint to poll
-- `interval?: number` (default: 2000) - Poll interval in milliseconds
-- `enabled?: boolean` (default: true) - Enable/disable polling
-
-**Returns:**
-- `status: StatusResponse | null` - Latest status response
-- `loading: boolean` - Loading state
-- `error: Error | null` - Error if polling failed
-
-## 🔌 Integration with Backend
-
-### Replacing Simulation Mode
-
-To connect to a real backend, modify the `LiveSessionChart` component:
-
-```tsx
-// Change from simulation to real API
-<LiveSessionChart 
-  simulationMode={false}
-  apiEndpoint="http://your-backend:5000/ingest"
-/>
-```
-
-### Expected API Response Format
-
-**GET /status** (for fraud detection)
-```json
-{
-  "status": "VALID",
-  "timestamp": 1234567890,
-  "message": "Session verified"
-}
-```
-
-**GET /ingest** (for voltage data)
-```json
-{
-  "voltage": 230.5,
-  "timestamp": 1234567890
-}
-```
-
-## 🎯 Next Steps for Hackathon Integration
-
-1. **MeshSDK Integration**: Replace the mock wallet connection with actual MeshSDK `CardanoWallet` component
-2. **Backend Connection**: Replace simulation mode with real API endpoints from your Python backend
-3. **Blockchain Integration**: Connect the "Start Charging" button to the `lockFunds` function from Blockchain Dev B2
-4. **Real Data Flow**: User clicks "Start" → Wallet opens → Graph starts moving with real voltage data
-
-## 📦 Build for Production
-
-```bash
-# Build the project
-pnpm build
-
-# Preview production build
-pnpm preview
-
-# Start production server
-pnpm start
-```
-
-## 🎨 Customizing the Design
-
-All colors and animations are defined in `client/src/index.css`. To modify the cyberpunk aesthetic:
-
-```css
-/* Color Variables */
---background: #0a0e27;      /* Deep navy */
---foreground: #00d9ff;      /* Electric cyan */
---destructive: #ff006e;     /* Hot magenta */
---chart-2: #00ff41;         /* Neon green */
-
-/* Custom Glow Classes */
-.glow-cyan { /* Cyan glow effect */ }
-.border-glow-magenta { /* Magenta border glow */ }
-.danger-flash { /* Flashing danger animation */ }
-```
-
-## 📝 Notes
-
-- **Simulation Mode**: Currently enabled by default. Generates realistic voltage fluctuations (220-240V) every second
-- **Responsive Design**: Dashboard is optimized for desktop viewing but includes responsive breakpoints
-- **Accessibility**: High contrast neon colors provide excellent visibility; monospace font ensures readability
-- **Performance**: Chart limits data points to 60 for smooth rendering
-
-## 🏆 Hackathon Tips
-
-- The **Status Card** is the judge's focal point—it's prominently displayed and animated
-- The **Voltage Chart** shows real-time monitoring capability
-- The **Wallet Connection** demonstrates blockchain integration readiness
-- All components are modular and ready for backend integration
-
-## 📄 License
-
-MIT
+Our project demonstrates the power of the new agent economy. We are building one of the first, most critical agents—a "Guardian"—that will enable the next generation of secure, autonomous, multi-agent applications on Cardano.
