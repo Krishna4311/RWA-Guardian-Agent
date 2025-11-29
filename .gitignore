@@ -114,3 +114,9 @@ temp/
 # package-lock.json
 # pnpm-lock.yaml
 # yarn.lock
+
+# Sensitive Scripts
+fix_env.js
+
+# Nested Repositories
+masumi-services-dev-quickstart/
