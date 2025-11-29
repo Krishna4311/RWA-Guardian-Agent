@@ -7,7 +7,7 @@ import {
     Reading,
     CardanoTransactionResult,
 } from "../shared/types.js";
-// import { detectAnomalies } from "./simulator.js"; // No longer using local TS detection
+import { masumiService } from "./services/masumiService.js";
 
 const PYTHON_API_URL = "http://localhost:5000/predict";
 
@@ -90,14 +90,26 @@ export class GuardianAgent {
                     anomaly.type = "energy_decrease";
                 }
 
+                // Log to Masumi Network
+                console.log(`🚨 FRAUD DETECTED in session ${sessionId}: ${reason}. Logging to Masumi...`);
+                const masumiResult = await masumiService.logAuditRecord({
+                    sessionId,
+                    anomaly,
+                    timestamp: Date.now()
+                });
+
+                if (masumiResult.verified) {
+                    console.log(`✅ Audit record logged to Masumi. TxId: ${masumiResult.txId}`);
+                } else {
+                    console.warn(`⚠️ Failed to log audit record to Masumi`);
+                }
+
                 // Only add if not already flagged as fraud or if we want to log multiple anomalies
                 // Let's add it to the list
                 session.anomalies.push(anomaly);
                 session.status = "FRAUD";
                 session.anomalyReason = anomaly.message;
                 session.onChainAction = "FLAG_FRAUD";
-
-                console.log(`🚨 FRAUD DETECTED in session ${sessionId}: ${reason}`);
             }
 
         } catch (error) {

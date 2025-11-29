@@ -5,8 +5,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle2, AlertTriangle, Link2 } from "lucide-react";
 import { StreamData, BlockchainRecord } from "@shared/types";
+import MasumiDashboard from "@/components/MasumiDashboard";
 import MasumiProcessVisualizer from "@/components/MasumiProcessVisualizer";
-import DebugTerminal from "@/components/DebugTerminal";
+
+// ... (existing imports)
+
+
 import { toast } from "sonner";
 
 /**
@@ -226,6 +230,9 @@ export default function LiveMonitor() {
                 </CardContent>
             </Card>
 
+            {/* Masumi Network Dashboard */}
+            <MasumiDashboard />
+
             {/* Masumi Process Visualization */}
             <MasumiProcessVisualizer latestRecord={blockchainRecords[0] || null} />
 
@@ -380,9 +387,8 @@ export default function LiveMonitor() {
             </Card>
 
             {/* Instant Check Panel */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-w-7xl mx-auto">
+            <div className="max-w-4xl mx-auto">
                 <InstantCheck />
-                <DebugTerminal />
             </div>
         </div>
     );

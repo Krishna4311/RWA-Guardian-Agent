@@ -19,7 +19,8 @@ import {
   generateFraudulentReading,
 } from "./simulator.js";
 import { streamGenerator, evaluateReading } from "./stream-engine.js";
-import { logService } from "./services/LogService.js";
+import { logService } from "./services/logService.js";
+import { masumiService } from "./services/masumiService.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -27,6 +28,16 @@ const __dirname = path.dirname(__filename);
 async function startServer() {
   const app = express();
   const server = createServer(app);
+  const port = process.env.PORT || 5000;
+
+  // Initialize Masumi Service
+  masumiService.checkConnection().then(connected => {
+    if (connected) {
+      console.log('✅ Masumi Service initialized and connected');
+    } else {
+      console.warn('⚠️ Masumi Service failed to connect - running in offline/mock mode');
+    }
+  });
 
   // Middleware
   app.use(express.json());
@@ -228,7 +239,7 @@ async function startServer() {
 
   /**
    * GET /api/logs/stream
-   * Server-Sent Events endpoint for backend logs (Glass Box Debugging).
+   * Server-Sent Events endpoint for detailed backend logs.
    */
   app.get("/api/logs/stream", (req: Request, res: Response) => {
     res.setHeader("Content-Type", "text/event-stream");
@@ -236,70 +247,51 @@ async function startServer() {
     res.setHeader("Connection", "keep-alive");
     res.flushHeaders();
 
-    logService.addClient(res);
+    const unsubscribe = logService.subscribe((log) => {
+      res.write(`data: ${JSON.stringify(log)}\n\n`);
+    });
+
+    req.on("close", () => {
+      unsubscribe();
+    });
   });
 
   /**
-   * POST /api/check-reading
-   * Stateless validation of a single reading or an array of readings.
+   * GET /api/masumi/status
+   * Proxies request to local Masumi Payment Service to get real network status
    */
-  app.post("/api/check-reading", (req: Request, res: Response) => {
+  app.get("/api/masumi/status", async (_req: Request, res: Response) => {
     try {
-      const input = req.body;
-      if (Array.isArray(input)) {
-        if (input.length === 0) {
-          return res.status(400).json({ error: "Empty array" });
-        }
-        const lastReading = input[input.length - 1] as StreamReading;
-        const prevReading = input.length > 1 ? (input[input.length - 2] as StreamReading) : undefined;
-        const result = evaluateReading(lastReading, prevReading);
-        res.json(result);
-      } else {
-        const result = evaluateReading(input as StreamReading);
-        res.json(result);
-      }
-    } catch (error) {
-      console.error("Error checking reading:", error);
-      res.status(500).json({ error: "Failed to check reading" });
-    }
-  });
+      // Use the internal Docker URL or localhost depending on where this runs
+      // Since we are running outside docker (npm run dev), use localhost
+      const MASUMI_URL = process.env.MASUMI_API_URL || 'http://localhost:3001/api/v1';
+      const ADMIN_KEY = process.env.MASUMI_API_KEY || '1234567890abcdef1234567890abcdef';
 
-  /**
-   * GET /api/blockchain-records
-   * Get blockchain transaction records (fraud detections submitted to chain)
-   */
-  app.get("/api/blockchain-records", (req: Request, res: Response) => {
-    try {
-      const limit = req.query.limit ? parseInt(req.query.limit as string) : undefined;
-      const records = streamGenerator.getBlockchainRecords(limit);
+      const response = await axios.get(`${MASUMI_URL}/registry?network=Mainnet`, {
+        headers: { 'token': ADMIN_KEY },
+        timeout: 2000
+      });
+
       res.json({
-        records,
-        total: records.length
+        status: 'online',
+        network: 'Mainnet',
+        projects: response.data.data?.Assets || [],
+        raw: response.data
       });
     } catch (error) {
-      console.error("Error getting blockchain records:", error);
-      res.status(500).json({ error: "Failed to get blockchain records" });
+      console.error('Failed to fetch Masumi status:', error instanceof Error ? error.message : error);
+      res.json({
+        status: 'offline',
+        network: 'Mainnet',
+        projects: [],
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
     }
   });
 
-  // ==============================
-  // Static Files & Client‑Side Routing
-  // ==============================
-  // In development, Vite serves the frontend on port 3000
-  // In production, we serve the built static files
-  if (process.env.NODE_ENV === "production") {
-    const staticPath = path.resolve(__dirname, "public");
-    app.use(express.static(staticPath));
-    app.get("*", (_req, res) => {
-      res.sendFile(path.join(staticPath, "index.html"));
-    });
-  }
-
-  const port = process.env.PORT || 5000;
   server.listen(port, () => {
-    console.log(`🚀 EV Guardian Server running on http://localhost:${port}/`);
-    console.log(`📡 API available at http://localhost:${port}/api`);
+    console.log(`Server running on port ${port}`);
   });
 }
 
-startServer().catch(console.error);
+startServer();
