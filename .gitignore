@@ -109,6 +109,21 @@ temp/
 # Vite
 .vite/
 
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+.venv
+*.egg-info/
+dist/
+build/
+*.egg
+
 # Lock files (keep package.json but ignore lock files if needed)
 # Uncomment if you want to ignore lock files
 # package-lock.json
