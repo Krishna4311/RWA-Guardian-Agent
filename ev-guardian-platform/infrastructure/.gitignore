@@ -6,3 +6,14 @@ masumi-payment-service/
 node_modules/
 masumi-data/
 *.txt
+*.log
+.DS_Store
+.vscode/
+.idea/
+coverage/
+dist/
+.cache/
+.next/
+out/
+.build/
+*.csv
