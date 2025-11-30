@@ -19,7 +19,7 @@ import {
   generateFraudulentReading,
 } from "./simulator.js";
 import { streamGenerator, evaluateReading } from "./stream-engine.js";
-import { logService } from "./services/logService.js";
+import { logService } from "./services/LogService.js";
 import { masumiService } from "./services/masumiService.js";
 
 const __filename = fileURLToPath(import.meta.url);
