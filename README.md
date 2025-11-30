@@ -26,7 +26,7 @@ flowchart LR
 
 Project Summary: The "RWA Guardian Agent" is a specialized, autonomous AI security agent built on the Masumi Network. It is designed to solve the critical "Trilemma of Trust" (Data Fraud, Identity Fraud, and Scalability Failure) for Real-World Assets (RWAs) tokenized on the Cardano blockchain.
 
-Our solution provides a 24/7, verifiable security service. It uses a hybrid AI (Python \+ Node.js) architecture, a Hydra Head (L2) for high-speed real-time IoT data monitoring, and an Aiken (L1) smart contract for on-chain security. The agent's identity is secured by Masumi's Identity & Trust protocol (Atala PRISM), and its findings are recorded immutably using Masumi's "Decision Logging" feature.
+Our solution provides a 24/7, verifiable security service. It uses a hybrid AI (Python + Node.js) architecture, for high-speed real-time IoT data monitoring, and an Aiken (L1) smart contract for on-chain security. The agent's identity is secured by Masumi's Identity & Trust protocol (Atala PRISM), and its findings are recorded immutably using Masumi's "Decision Logging" feature.
 
 ---
 
@@ -34,9 +34,11 @@ Our solution provides a 24/7, verifiable security service. It uses a hybrid AI (
 
 The tokenization of Real-World Assets (RWAs) is a multi-trillion dollar opportunity, but it is fundamentally blocked by a Critical Trilemma of Trust:
 
-* Data Fraud: On-chain contracts are "blind." They must trust the data they are fed from off-chain oracles and IoT sensors. This "garbage in, garbage out" problem means a single hacked or faulty sensor can be exploited to drain millions from a protocol.  
-* Identity Fraud: Who is updating the asset? An anonymous wallet? A hackable, centralized API key? Without a verifiable, on-chain identity for the oracles and agents managing an asset, there is no true accountability or security.  
-* Scalability Failure: RWAs generate a constant, high-frequency stream of data (e.g., temperature checks, GPS pings, energy output). L1 blockchains are not built for this. The cost and speed limitations of L1 make real-time monitoring impossible, forcing projects to use centralized databases, which defeats the purpose of decentralization.
+*   **Data Fraud:** On-chain contracts are "blind." They must trust the data they are fed from off-chain oracles and IoT sensors. This "garbage in, garbage out" problem means a single hacked or faulty sensor can be exploited to drain millions from a protocol.
+    
+*   **Identity Fraud:** Who is updating the asset? An anonymous wallet? A hackable, centralized API key? Without a verifiable, on-chain identity for the oracles and agents managing an asset, there is no true accountability or security.
+    
+*   **Scalability Failure:** RWAs generate a constant, high-frequency stream of data (e.g., temperature checks, GPS pings, energy output). L1 blockchains are not built for this. The cost and speed limitations of L1 make real-time monitoring impossible, forcing projects to use centralized databases, which defeats the purpose of decentralization.
 
 ---
 
