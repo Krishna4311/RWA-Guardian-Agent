@@ -284,12 +284,15 @@ async function startServer() {
     }
   });
 
-  // Serve static files from the dist directory
-  app.use(express.static(path.join(__dirname, "../dist")));
+  // Serve static files from the dist/public directory (Vite build output)
+  // In production (dist/index.js), this is 'public' relative to __dirname
+  const staticDir = path.join(__dirname, "public");
+
+  app.use(express.static(staticDir));
 
   // Handle SPA routing: serve index.html for all other routes
   app.get("*", (req, res) => {
-    res.sendFile(path.join(__dirname, "../dist/index.html"));
+    res.sendFile(path.join(staticDir, "index.html"));
   });
 
   server.listen(port, () => {
