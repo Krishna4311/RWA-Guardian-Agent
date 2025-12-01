@@ -1,3 +1,4 @@
+import axios from "axios";
 import express, { Request, Response } from "express";
 import { createServer } from "http";
 import path from "path";
@@ -247,13 +248,7 @@ async function startServer() {
     res.setHeader("Connection", "keep-alive");
     res.flushHeaders();
 
-    const unsubscribe = logService.subscribe((log) => {
-      res.write(`data: ${JSON.stringify(log)}\n\n`);
-    });
-
-    req.on("close", () => {
-      unsubscribe();
-    });
+    logService.addClient(res);
   });
 
   /**
