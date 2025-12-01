@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite --host",
     "server:dev": "tsx watch server/index.ts",
-    "build": "npx vite build && npx esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
+    "build": "npm install && npx vite build && npx esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
     "start": "NODE_ENV=production node dist/index.js",
     "preview": "vite preview --host",
     "check": "tsc --noEmit",
@@ -86,7 +86,6 @@
     "vitest": "^2.1.4"
   },
   "devDependencies": {
-    "add": "^2.0.6",
-    "pnpm": "^10.15.1"
+    "add": "^2.0.6"
   }
 }
